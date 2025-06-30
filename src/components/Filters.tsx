@@ -53,6 +53,18 @@ const generations = [
   }
 ];
 
+const regionNames: Record<number, string> = {
+  1: 'Kanto',
+  2: 'Johto',
+  3: 'Hoenn',
+  4: 'Sinnoh',
+  5: 'Unova',
+  6: 'Kalos',
+  7: 'Alola',
+  8: 'Galar',
+  9: 'Paldea'
+};
+
 // Updated type icons with working URLs
 const typeIcons: Record<string, string> = {
   normal: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/1.png",
@@ -144,54 +156,59 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
         <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
           {t('special') ?? 'Special'}
         </h3>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-5 gap-3 justify-items-center">
           <button
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.legendary ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.legendary ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
             onClick={handleLegendaryToggle}
             title="Legendary"
           >
             <Crown className="w-6 h-6 text-yellow-600" />
+            <span className="text-[10px] mt-1">Legendary</span>
           </button>
           <button
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.mythical ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.mythical ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
             onClick={handleMythicalToggle}
             title="Mythical"
           >
             <Sparkles className="w-6 h-6 text-purple-600" />
+            <span className="text-[10px] mt-1">Mythical</span>
           </button>
           <button
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.forms.includes('alolan') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.forms.includes('alolan') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
             onClick={() => handleFormToggle('alolan')}
             title="Alolan"
           >
             🌴
+            <span className="text-[10px] mt-1">Alolan</span>
           </button>
           <button
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.forms.includes('galarian') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.forms.includes('galarian') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
             onClick={() => handleFormToggle('galarian')}
             title="Galarian"
           >
             🏴
+            <span className="text-[10px] mt-1">Galarian</span>
           </button>
           <button
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.forms.includes('mega') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.forms.includes('mega') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
             onClick={() => handleFormToggle('mega')}
             title="Mega"
           >
             💥
+            <span className="text-[10px] mt-1">Mega</span>
           </button>
         </div>
       </div>
 
-      {/* <div className="mb-6">
+      <div className="mb-6">
         <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
           {t('generation')}
         </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3 justify-items-center">
           {generations.map((gen) => (
             <button
               key={gen.number}
-              className={`w-10 h-10 p-0 rounded-lg transition-all flex items-center justify-center ${
+              className={`w-14 h-16 p-1 rounded-lg transition-all flex flex-col items-center justify-center ${
                 filters.generation === gen.number
                   ? 'bg-red-200 shadow-lg'
                   : 'hover:bg-gray-100'
@@ -214,16 +231,17 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
                   target.style.display = 'none';
                 }}
               />
+              <span className="text-[10px] mt-1">{regionNames[gen.number]}</span>
             </button>
           ))}
         </div>
-      </div> */}
+      </div>
 
       <div>
         <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
           {t('types')}
         </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-3 justify-items-center">
           {pokemonTypes.map((type) => (
             <button
               key={type}

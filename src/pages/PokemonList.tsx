@@ -5,8 +5,6 @@ import { Filters } from '../components/Filters';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useLanguage } from '../contexts/LanguageContext';
 
-import { Loader2 } from 'lucide-react';
-
 export const PokemonList: React.FC = () => {
   const { t } = useLanguage();
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
@@ -171,6 +169,9 @@ export const PokemonList: React.FC = () => {
     
     const typeMatch = filters.types.length === 0 ||
                      filters.types.every((type) => p.types.includes(type));
+      
+    // Match generation (single selection)
+    const generationMatch = filters.generation === null || p.generation === filters.generation;
     
     const legendaryMatch = filters.legendary === null || p.legendary === filters.legendary;
     const mythicalMatch = filters.mythical === null || p.mythical === filters.mythical;
@@ -179,11 +180,11 @@ export const PokemonList: React.FC = () => {
       (p.form !== 'normal' && filters.forms.includes(p.form as any)) ||
       (p.altForms && filters.forms.filter((f) => f !== 'normal').some((f) => p.altForms!.includes(f)));
 
-    if (!selectedRegion) return nameMatch && typeMatch && legendaryMatch && mythicalMatch && formMatch;
+    if (!selectedRegion) return nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && formMatch;
     const region = regions.find(r => r.id === selectedRegion);
     if (!region) return nameMatch && typeMatch && legendaryMatch && mythicalMatch && formMatch;
     const generation = getGeneration(p.id);
-    return region.generations.includes(generation) && nameMatch && typeMatch && legendaryMatch && mythicalMatch && formMatch;
+    return region.generations.includes(generation) && nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && formMatch;
   });
 
   if (loading) {
@@ -210,24 +211,7 @@ export const PokemonList: React.FC = () => {
         </div>
         <div className="mb-8">
           <Filters filters={filters} onFilterChange={setFilters} />
-          <div className="mb-4">
-            <label htmlFor="region-filter" className="block text-sm font-medium mb-1">
-              { 'Filter by Region'}
-            </label>
-            <select
-              id="region-filter"
-              className="border rounded p-2 bg-white"
-              value={selectedRegion || ''}
-              onChange={(e) => setSelectedRegion(e.target.value || null)}
-            >
-              <option value="">All Regions</option>
-              {regions.map(region => (
-                <option key={region.id} value={region.id}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
-          </div>
+
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {filteredPokemon.map((pokemon) => (
