@@ -54,6 +54,10 @@ export const PokemonDetail: React.FC = () => {
   const { t, language } = useLanguage();
   const [pokemon, setPokemon] = useState<Pokemon | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isShiny, setIsShiny] = useState(false);
+  const [currentForm, setCurrentForm] = useState<'normal' | 'alolan' | 'galarian' | 'mega'>('normal');
+  const [formSprites, setFormSprites] = useState<Partial<Record<'alolan' | 'galarian' | 'mega', { normal: string; shiny: string | null }>>>({});
+  const [evolutionChain, setEvolutionChain] = useState<Array<{ id: number; name: string; image: string; item: string | null; stage: number; generation: number }>>([]);
 
   useEffect(() => {
     const fetchPokemonDetail = async () => {
@@ -61,6 +65,10 @@ export const PokemonDetail: React.FC = () => {
         const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
         const details = await response.json();
         
+        // Fetch species data for extra flags and evolution chain
+        const speciesRes = await fetch(details.species.url);
+        const species = await speciesRes.json();
+
         // Calculate generation based on Pokemon ID ranges
         let generation = 1;
         if (details.id >= 152 && details.id <= 251) generation = 2;
@@ -83,6 +91,39 @@ export const PokemonDetail: React.FC = () => {
         const imageUrl = details.sprites.other['official-artwork']?.front_default || 
                         details.sprites.front_default || 
                         `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${details.id}.png`;
+
+        // Determine form (Alolan/Galarian/Normal) from name
+        const lowerName = details.name.toLowerCase();
+        let form: 'alolan' | 'galarian' | 'normal' = 'normal';
+        if (lowerName.includes('alola')) form = 'alolan';
+        else if (lowerName.includes('galar')) form = 'galarian';
+
+        // Collect sprites for alternate regional forms
+        const spritesMap: Record<'alolan' | 'galarian', { normal: string; shiny: string | null }> = {} as any;
+        if (species.varieties?.length) {
+          for (const variety of species.varieties) {
+            const vName: string = variety.pokemon.name.toLowerCase();
+            let key: 'alolan' | 'galarian' | undefined;
+            if (vName.includes('alola')) key = 'alolan';
+            else if (vName.includes('galar')) key = 'galarian';
+
+            if (key) {
+              try {
+                const vResp = await fetch(variety.pokemon.url);
+                const vDetails = await vResp.json();
+                const normalArt = vDetails.sprites?.other?.['official-artwork']?.front_default || vDetails.sprites?.front_default;
+                const shinyArt = vDetails.sprites?.other?.['official-artwork']?.front_shiny || vDetails.sprites?.front_shiny || null;
+                if (normalArt) {
+                  spritesMap[key] = { normal: normalArt, shiny: shinyArt };
+                }
+              } catch (err) {
+                console.error('Variety fetch error', err);
+              }
+            }
+          }
+        }
+        setFormSprites(spritesMap);
+        setCurrentForm(form);
         
         setPokemon({
           id: details.id,
@@ -101,10 +142,50 @@ export const PokemonDetail: React.FC = () => {
           },
           height: details.height / 10,
           weight: details.weight / 10,
+          legendary: species?.is_legendary ?? false,
+          mythical: species?.is_mythical ?? false,
+          form,
           abilities: details.abilities.map((ability: { ability: { name: string } }) => 
-            ability.ability.name
-          ),
+             ability.ability.name
+           ),
         });
+
+        // Fetch mega form sprites from species varieties
+        const megaVariety = species.varieties?.find((v: any) => v.pokemon.name.includes('mega'));
+        if (megaVariety) {
+          try {
+            const megaRes = await fetch(megaVariety.pokemon.url);
+            const megaDetails = await megaRes.json();
+            const megaNormal = megaDetails.sprites.other['official-artwork']?.front_default ?? megaDetails.sprites.front_default;
+            const megaShiny = megaDetails.sprites.other['official-artwork']?.front_shiny ?? megaDetails.sprites.front_shiny;
+            setFormSprites((prev) => ({ ...prev, mega: { normal: megaNormal, shiny: megaShiny } }));
+          } catch (err) {
+            console.error('mega fetch error', err);
+          }
+        }
+
+        // Fetch evolution chain
+        if (species.evolution_chain?.url) {
+          try {
+            const evoRes = await fetch(species.evolution_chain.url);
+            const evoData = await evoRes.json();
+            const chainArr: Array<{ id: number; name: string; image: string; item: string | null; stage: number; generation: number }> = [];
+            const traverse = (node: any, stage = 0) => {
+              const pokeName = node.species.name;
+              const idNum = Number(node.species.url.split('/').slice(-2, -1)[0]);
+              const img = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${idNum}.png`;
+              const itemReq = node.evolution_details?.[0]?.item?.name ?? null;
+              const generation = getGeneration(idNum);
+              chainArr.push({ id: idNum, name: pokeName, image: img, item: itemReq, stage, generation });
+              node.evolves_to.forEach((child: any) => traverse(child, stage + 1));
+            };
+            traverse(evoData.chain);
+            setEvolutionChain(chainArr);
+          } catch (err) {
+            console.error('evo chain fetch error', err);
+          }
+        }
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching Pokemon details:', error);
@@ -138,6 +219,17 @@ export const PokemonDetail: React.FC = () => {
   }
 
   const displayName = pokemon.translatedNames[language] || pokemon.name;
+  // Choose correct artwork based on selected form and shiny toggle
+  const displayImage = currentForm === 'normal'
+    ? (isShiny
+        ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${pokemon.id}.png`
+        : pokemon.imageUrl)
+    : (() => {
+        const sprite = formSprites[currentForm];
+        if (!sprite) return pokemon.imageUrl;
+        if (isShiny && sprite.shiny) return sprite.shiny;
+        return sprite.normal;
+      })();
 
   return (
     <div className="min-h-screen bg-[#FF1C1C] py-8">
@@ -149,7 +241,6 @@ export const PokemonDetail: React.FC = () => {
           </Link>
           <LanguageSelector />
         </div>
-        
         <div className="relative bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Animated type backgrounds */}
           <div className="absolute inset-0 flex">
@@ -167,51 +258,89 @@ export const PokemonDetail: React.FC = () => {
 
           <div className="relative z-10 p-6">
             <div className="grid md:grid-cols-2 gap-8">
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center">
+                {/* Shiny toggle */}
+                <button
+                  onClick={(e) => { e.preventDefault(); setIsShiny((prev) => !prev); }}
+                  className="absolute top-2 left-2 bg-white rounded-full w-10 h-10 flex items-center justify-center text-yellow-500 hover:bg-yellow-200 shadow z-20"
+                  title={isShiny ? 'Show normal' : 'Show shiny'}
+                >
+                  ✨
+                </button>
+
+                {/* Form buttons */}
+                <div className="absolute left-2 top-14 flex flex-col gap-2 z-20">
+                  {/* Alolan toggle */}
+                  {formSprites.alolan && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentForm((prev) => (prev === 'alolan' ? 'normal' : 'alolan'));
+                        setIsShiny(false);
+                      }}
+                      className={`bg-white rounded-full w-9 h-9 flex items-center justify-center hover:bg-green-100 shadow ${currentForm === 'alolan' ? 'ring-2 ring-green-400' : ''}`}
+                      title="Alolan form"
+                    >
+                      🌴
+                    </button>
+                  )}
+                  {/* Galarian toggle */}
+                  {formSprites.galarian && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentForm((prev) => (prev === 'galarian' ? 'normal' : 'galarian'));
+                        setIsShiny(false);
+                      }}
+                      className={`bg-white rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-100 shadow ${currentForm === 'galarian' ? 'ring-2 ring-gray-400' : ''}`}
+                      title="Galarian form"
+                    >
+                      🏴
+                    </button>
+                  )}
+                  {/* Mega toggle */}
+                  {formSprites.mega && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentForm((prev) => (prev === 'mega' ? 'normal' : 'mega'));
+                        setIsShiny(false);
+                      }}
+                      className={`bg-white rounded-full w-9 h-9 flex items-center justify-center hover:bg-red-100 shadow ${currentForm === 'mega' ? 'ring-2 ring-red-400' : ''}`}
+                      title="Mega form"
+                    >
+                      🔥
+                    </button>
+                  )}
+                </div>
+
+                {/* Pokémon artwork */}
                 <img
-                  src={pokemon.imageUrl}
+                  src={displayImage}
                   alt={displayName}
-                  className="w-full max-w-md h-auto"
+                  className="w-4/5 max-w-md h-auto object-contain"
                   style={{ filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.3))' }}
                   onError={(e) => {
-                    // Fallback to default sprite if official artwork fails
                     const target = e.target as HTMLImageElement;
                     target.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png`;
                   }}
                 />
               </div>
-              
-              <div>
-                <div className="mb-6">
-                  <p className="text-gray-500 text-lg mb-2">#{String(pokemon.id).padStart(3, '0')}</p>
-                  <div className="flex items-center gap-4 mb-4">
-                    <h1 className="text-4xl font-bold capitalize">{displayName}</h1>
-                    <div className="flex gap-2">
-                      {pokemon.types.map((type) => (
-                        <img
-                          key={type}
-                          src={typeIcons[type]}
-                          alt={type}
-                          className="w-8 h-8 object-contain"
-                          onError={(e) => {
-                            // Hide icon if it fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {pokemon.types.map((type) => (
-                      <span
-                        key={type}
-                        className={`bg-gradient-to-br ${typeColors[type]} px-4 py-2 rounded-full text-white text-sm capitalize font-medium shadow-md`}
-                      >
-                        {type}
-                      </span>
-                    ))}
-                  </div>
+              <div className="md:col-span-1">
+                <h1 className="text-4xl font-bold capitalize mb-4">{displayName}</h1>
+                <div className="flex gap-3 flex-wrap">
+                  {pokemon.types.map((type) => (
+                    <img
+                      key={type}
+                      src={typeIcons[type]}
+                      alt={type}
+                      className="h-8 w-auto object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
@@ -269,6 +398,103 @@ export const PokemonDetail: React.FC = () => {
                     })}
                   </div>
                 </div>
+
+                {/* Evolution Chain */}
+                {evolutionChain.length > 1 && (
+                  <div className="mt-10">
+                    <h2 className="text-xl font-semibold mb-4">{t('evolutionChain') ?? 'Evolution Chain'}</h2>
+                    <div className="flex flex-col gap-4">
+                      {(() => {
+                        console.log(evolutionChain); // Log the evolution chain data
+                        // Group by stage
+                        const grouped = evolutionChain.reduce<Record<number, typeof evolutionChain>>((acc, evo) => {
+                          acc[evo.stage] = acc[evo.stage] ? [...acc[evo.stage], evo] : [evo];
+                          return acc;
+                        }, {});
+
+                        // Get all stages sorted
+                        const stages = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+                        
+                        // Build all possible evolution paths
+                        const buildPaths = (currentStage: number, currentPath: any[]): any[] => {
+                          if (currentStage > Math.max(...stages)) return [currentPath];
+                          
+                          const nextEvolutions = grouped[currentStage] || [];
+                          if (nextEvolutions.length === 0) return [currentPath];
+                          
+                          let allPaths: any[] = [];
+                          for (const evo of nextEvolutions) {
+                            const newPath = [...currentPath, evo];
+                            const subPaths = buildPaths(currentStage + 1, newPath);
+                            allPaths = [...allPaths, ...subPaths];
+                          }
+                          
+                          return allPaths;
+                        };
+                        
+                        // Start with base Pokémon
+                        const basePokemons = grouped[0] || [];
+                        const allPaths: any[] = [];
+                        for (const base of basePokemons) {
+                          const basePaths = buildPaths(1, [base]);
+                          allPaths.push(...basePaths);
+                        }
+                        
+                        // Render each path
+                        return allPaths.map((path, pathIndex) => (
+                          <div key={pathIndex} className="flex items-center gap-4">
+                            {path.map((evo: any, idx: number) => (
+                              <React.Fragment key={evo.id}>
+                                {evo.id !== pokemon.id ? (
+                                  <div className="flex flex-col items-center">
+                                    <Link to={`/pokemon/${evo.id}`} className="flex flex-col items-center hover:opacity-80">
+                                      <img src={evo.image} alt={evo.name} className="w-16 h-16 object-contain" />
+                                      <span className="capitalize text-sm mt-1">
+                                        {pokemonNameTranslations[evo.name]?.[language] ?? evo.name}
+                                      </span>
+                                      <span className="text-xs text-gray-500 mt-1">
+                                        Gen {evo.generation}
+                                      </span>
+                                      <span className="text-xs text-gray-500 mt-1">
+                                        {getRegion(evo.generation)}
+                                      </span>
+                                    </Link>
+                                    {evo.item && (
+                                      <span className="text-xs mt-1">
+                                        {evo.item}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center opacity-50">
+                                    <div className="flex flex-col items-center">
+                                      <img src={evo.image} alt={evo.name} className="w-16 h-16 object-contain" />
+                                      <span className="capitalize text-sm mt-1">
+                                        {pokemonNameTranslations[evo.name]?.[language] ?? evo.name}
+                                      </span>
+                                      <span className="text-xs text-gray-500 mt-1">
+                                        Gen {evo.generation}
+                                      </span>
+                                      <span className="text-xs text-gray-500 mt-1">
+                                        {getRegion(evo.generation)}
+                                      </span>
+                                    </div>
+                                    {evo.item && (
+                                      <span className="text-xs mt-1">
+                                        {evo.item}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {idx < path.length - 1 && <span className="text-2xl">→</span>}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -276,4 +502,31 @@ export const PokemonDetail: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const getGeneration = (id: number): number => {
+  if (id >= 152 && id <= 251) return 2;
+  else if (id >= 252 && id <= 386) return 3;
+  else if (id >= 387 && id <= 493) return 4;
+  else if (id >= 494 && id <= 649) return 5;
+  else if (id >= 650 && id <= 721) return 6;
+  else if (id >= 722 && id <= 809) return 7;
+  else if (id >= 810 && id <= 905) return 8;
+  else if (id >= 906) return 9;
+  return 1;
+};
+
+const getRegion = (generation: number): string => {
+  switch(generation) {
+    case 1: return 'Kanto';
+    case 2: return 'Johto';
+    case 3: return 'Hoenn';
+    case 4: return 'Sinnoh';
+    case 5: return 'Unova';
+    case 6: return 'Kalos';
+    case 7: return 'Alola';
+    case 8: return 'Galar';
+    case 9: return 'Paldea';
+    default: return '';
+  }
 };

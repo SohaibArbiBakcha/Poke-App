@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Pokemon } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -6,27 +6,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface PokemonCardProps {
   pokemon: Pokemon;
 }
-
-const typeColors: Record<string, string> = {
-  normal: 'from-gray-400 to-gray-300',
-  fire: 'from-red-500 to-orange-400',
-  water: 'from-blue-500 to-blue-400',
-  electric: 'from-yellow-400 to-yellow-300',
-  grass: 'from-green-500 to-green-400',
-  ice: 'from-blue-200 to-blue-100',
-  fighting: 'from-red-700 to-red-600',
-  poison: 'from-purple-500 to-purple-400',
-  ground: 'from-yellow-600 to-yellow-500',
-  flying: 'from-indigo-400 to-indigo-300',
-  psychic: 'from-pink-500 to-pink-400',
-  bug: 'from-lime-500 to-lime-400',
-  rock: 'from-yellow-800 to-yellow-700',
-  ghost: 'from-purple-700 to-purple-600',
-  dragon: 'from-indigo-700 to-indigo-600',
-  dark: 'from-gray-800 to-gray-700',
-  steel: 'from-gray-500 to-gray-400',
-  fairy: 'from-pink-300 to-pink-200',
-};
 
 // Updated type icons with working URLs
 const typeIcons: Record<string, string> = {
@@ -50,8 +29,39 @@ const typeIcons: Record<string, string> = {
   fairy: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/18.png"
 };
 
+const getGeneration = (id: number): number => {
+  if (id >= 152 && id <= 251) return 2;
+  else if (id >= 252 && id <= 386) return 3;
+  else if (id >= 387 && id <= 493) return 4;
+  else if (id >= 494 && id <= 649) return 5;
+  else if (id >= 650 && id <= 721) return 6;
+  else if (id >= 722 && id <= 809) return 7;
+  else if (id >= 810 && id <= 905) return 8;
+  else if (id >= 906) return 9;
+  return 1;
+};
+
+const getRegion = (generation: number): string => {
+  switch(generation) {
+    case 1: return 'Kanto';
+    case 2: return 'Johto';
+    case 3: return 'Hoenn';
+    case 4: return 'Sinnoh';
+    case 5: return 'Unova';
+    case 6: return 'Kalos';
+    case 7: return 'Alola';
+    case 8: return 'Galar';
+    case 9: return 'Paldea';
+    default: return '';
+  }
+};
+
 export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon }) => {
   const { language } = useLanguage();
+  const [isShiny, setIsShiny] = useState(false);
+  const imageUrl = isShiny
+    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${pokemon.id}.png`
+    : pokemon.imageUrl;
   
   const displayName = pokemon.translatedNames[language] || pokemon.name;
 
@@ -59,8 +69,15 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon }) => {
     <Link to={`/pokemon/${pokemon.id}`}>
       <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
         <div className="relative aspect-square p-4 bg-gradient-to-br from-gray-50 to-gray-100">
+          <button
+            onClick={(e) => { e.preventDefault(); setIsShiny(prev => !prev); }}
+            className="absolute top-2 left-2 bg-white rounded-full w-10 h-10 flex items-center justify-center text-yellow-500 hover:bg-yellow-200 shadow transition z-10"
+            title={isShiny ? 'Show normal' : 'Show shiny'}
+          >
+            ✨
+          </button>
           <img
-            src={pokemon.imageUrl}
+            src={imageUrl}
             alt={displayName}
             className="w-full h-full object-contain"
             style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
@@ -74,27 +91,35 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon }) => {
           <div className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1">
             <span className="text-xs font-medium text-gray-600">#{String(pokemon.id).padStart(3, '0')}</span>
           </div>
+          {pokemon.altForms && pokemon.altForms.length > 0 && (
+            <div className="absolute bottom-2 right-2 text-xl pointer-events-none">
+              {pokemon.altForms.includes('alolan') && <span title="Alolan">🌴</span>}
+              {pokemon.altForms.includes('galarian') && <span title="Galarian">🏴</span>}
+              {pokemon.altForms.includes('mega') && <span title="Mega">💥</span>}
+            </div>
+          )}
         </div>
         <div className="p-4">
-          <h3 className="text-lg font-semibold mb-3 text-center capitalize">{displayName}</h3>
-          <div className="flex gap-2 justify-center flex-wrap">
+          <div className="flex flex-col items-center">
+            <div className="text-lg font-bold capitalize">{displayName}</div>
+            <div className="text-xs text-gray-500">#{pokemon.id.toString().padStart(3, '0')}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {getRegion(getGeneration(pokemon.id))}
+            </div>
+          </div>
+          <div className="flex gap-3 justify-center flex-wrap mt-4">
             {pokemon.types.map((type) => (
-              <div
+              <img
                 key={type}
-                className={`bg-gradient-to-br ${typeColors[type]} flex items-center gap-1 px-3 py-1 rounded-full shadow-sm`}
-              >
-                <img 
-                  src={typeIcons[type]} 
-                  alt={type}
-                  className="w-4 h-4 object-contain"
-                  onError={(e) => {
-                    // Hide icon if it fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-                <span className="text-white text-sm capitalize font-medium">{type}</span>
-              </div>
+                src={typeIcons[type]}
+                alt={type}
+                className="w-[30%] h-auto object-contain"
+                onError={(e) => {
+                  // Hide icon if it fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
             ))}
           </div>
         </div>

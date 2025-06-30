@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Crown, Sparkles } from 'lucide-react';
 import { PokemonFilters } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -85,11 +85,29 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
     onFilterChange({ ...filters, types: newTypes });
   };
 
+  const handleLegendaryToggle = () => {
+    const value = filters.legendary === true ? null : true;
+    onFilterChange({ ...filters, legendary: value, mythical: null });
+  };
+  const handleMythicalToggle = () => {
+    const value = filters.mythical === true ? null : true;
+    onFilterChange({ ...filters, mythical: value, legendary: null });
+  };
+  const handleFormToggle = (form: 'alolan' | 'galarian' | 'mega') => {
+    const newForms = filters.forms.includes(form)
+      ? filters.forms.filter(f => f !== form)
+      : [...filters.forms, form];
+    onFilterChange({ ...filters, forms: newForms });
+  };
+
   const clearAllFilters = () => {
     onFilterChange({
       name: '',
       types: [],
-      generation: null
+      generation: null,
+      legendary: null,
+      mythical: null,
+      forms: []
     });
   };
 
@@ -121,7 +139,51 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
         </button>
       </div>
 
+      {/* Special status filters */}
       <div className="mb-6">
+        <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
+          {t('special') ?? 'Special'}
+        </h3>
+        <div className="grid grid-cols-5 gap-3">
+          <button
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.legendary ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            onClick={handleLegendaryToggle}
+            title="Legendary"
+          >
+            <Crown className="w-6 h-6 text-yellow-600" />
+          </button>
+          <button
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.mythical ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            onClick={handleMythicalToggle}
+            title="Mythical"
+          >
+            <Sparkles className="w-6 h-6 text-purple-600" />
+          </button>
+          <button
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.forms.includes('alolan') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            onClick={() => handleFormToggle('alolan')}
+            title="Alolan"
+          >
+            🌴
+          </button>
+          <button
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.forms.includes('galarian') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            onClick={() => handleFormToggle('galarian')}
+            title="Galarian"
+          >
+            🏴
+          </button>
+          <button
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${filters.forms.includes('mega') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            onClick={() => handleFormToggle('mega')}
+            title="Mega"
+          >
+            💥
+          </button>
+        </div>
+      </div>
+
+      {/* <div className="mb-6">
         <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
           {t('generation')}
         </h3>
@@ -129,31 +191,33 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
           {generations.map((gen) => (
             <button
               key={gen.number}
-              className={`p-3 rounded-lg transition-all border-2 flex flex-col items-center gap-2 ${
+              className={`w-10 h-10 p-0 rounded-lg transition-all flex items-center justify-center ${
                 filters.generation === gen.number
-                  ? 'border-red-500 bg-red-50 shadow-lg'
-                  : 'border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                  ? 'bg-red-200 shadow-lg'
+                  : 'hover:bg-gray-100'
               }`}
-              onClick={() => onFilterChange({ 
-                ...filters, 
-                generation: filters.generation === gen.number ? null : gen.number 
-              })}
+              onClick={() => {
+                const newGeneration = filters.generation === gen.number ? null : gen.number;
+                onFilterChange({ 
+                  ...filters, 
+                  generation: newGeneration
+                });
+              }}
             >
               <img 
                 src={gen.logo} 
                 alt={`${t('generation')} ${gen.number}`}
-                className="w-8 h-8 object-contain"
+                className="w-full h-6 object-contain"
                 onError={(e) => {
                   // Fallback if image fails to load
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                 }}
               />
-              <span className="text-sm font-medium">Gen {gen.number}</span>
             </button>
           ))}
         </div>
-      </div>
+      </div> */}
 
       <div>
         <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
@@ -163,24 +227,24 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
           {pokemonTypes.map((type) => (
             <button
               key={type}
-              className={`p-3 rounded-lg transition-all flex flex-col items-center gap-2 border-2 ${
+              className={`w-16 h-8 p-0 rounded-lg transition-all flex items-center justify-center ${
                 filters.types.includes(type)
-                  ? 'bg-red-100 border-red-500 shadow-lg'
-                  : 'border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                  ? 'bg-red-200 shadow-lg'
+                  : 'hover:bg-gray-100'
               }`}
               onClick={() => handleTypeToggle(type)}
             >
               <img 
                 src={typeIcons[type]} 
                 alt={type}
-                className="w-6 h-6 object-contain"
+                className="w-full h-6 object-contain"
                 onError={(e) => {
                   // Fallback if image fails to load
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                 }}
               />
-              <span className="capitalize text-xs font-medium">{type}</span>
+
             </button>
           ))}
         </div>
