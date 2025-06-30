@@ -26,6 +26,26 @@ export interface Pokemon {
   altForms?: ('alolan' | 'galarian' | 'mega')[];
 }
 
+// Evolution types --------------------------------------------------------------------------------------------------
+export interface EvolutionRequirement {
+  trigger: string;          // e.g. "level-up", "use-item", "trade" ...
+  minLevel?: number;        // level needed if any
+  item?: string;            // item name if applicable (stone, etc.)
+  heldItem?: string;        // held item required when trading
+  timeOfDay?: string;       // day / night
+  gender?: number;          // 1 = female, 2 = male
+  detailsText: string;      // pre-formatted human-readable requirements string
+}
+
+export interface EvolutionNode {
+  speciesName: string;      // e.g. "charmander"
+  spriteUrl: string;        // convenient sprite url for UI
+  requirements?: EvolutionRequirement; // undefined for the root/base form
+  evolvesTo: EvolutionNode[];           // list of next evolutions (can branch)
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+
 export interface PokemonFilters {
   name: string;
   types: string[];

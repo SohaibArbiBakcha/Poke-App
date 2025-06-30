@@ -5,6 +5,9 @@ import { Pokemon } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { pokemonNameTranslations } from '../utils/pokemonTranslations';
+import { EvolutionNode } from '../types/pokemon';
+import { fetchEvolutionChain } from '../utils/evolution';
+import { EvolutionChain } from '../components/EvolutionChain';
 
 const typeColors: Record<string, string> = {
   normal: 'from-gray-400 to-gray-300',
@@ -56,8 +59,11 @@ export const PokemonDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isShiny, setIsShiny] = useState(false);
   const [currentForm, setCurrentForm] = useState<'normal' | 'alolan' | 'galarian' | 'mega'>('normal');
+  type AbilityInfo = { name: string; effect: string };
+  const [abilitiesInfo, setAbilitiesInfo] = useState<AbilityInfo[]>([]);
+  const [selectedAbility, setSelectedAbility] = useState<string | null>(null);
   const [formSprites, setFormSprites] = useState<Partial<Record<'alolan' | 'galarian' | 'mega', { normal: string; shiny: string | null }>>>({});
-  const [evolutionChain, setEvolutionChain] = useState<Array<{ id: number; name: string; image: string; item: string | null; stage: number; generation: number }>>([]);
+  const [evoChain, setEvoChain] = useState<EvolutionNode | null>(null);
 
   useEffect(() => {
     const fetchPokemonDetail = async () => {
@@ -145,10 +151,23 @@ export const PokemonDetail: React.FC = () => {
           legendary: species?.is_legendary ?? false,
           mythical: species?.is_mythical ?? false,
           form,
-          abilities: details.abilities.map((ability: { ability: { name: string } }) => 
-             ability.ability.name
-           ),
+          abilities: details.abilities.map((ability: { ability: { name: string } }) => ability.ability.name),
         });
+
+        // Fetch ability details
+        try {
+          const infos = await Promise.all(
+            details.abilities.map(async (ab: { ability: { name: string; url: string } }) => {
+              const resp = await fetch(ab.ability.url);
+              const data = await resp.json();
+              const enEntry = data.effect_entries.find((e: any) => e.language.name === 'en');
+              return { name: ab.ability.name, effect: enEntry ? enEntry.effect : '' };
+            })
+          );
+          setAbilitiesInfo(infos);
+        } catch (err) {
+          console.error('ability fetch error', err);
+        }
 
         // Fetch mega form sprites from species varieties
         const megaVariety = species.varieties?.find((v: any) => v.pokemon.name.includes('mega'));
@@ -165,25 +184,11 @@ export const PokemonDetail: React.FC = () => {
         }
 
         // Fetch evolution chain
-        if (species.evolution_chain?.url) {
-          try {
-            const evoRes = await fetch(species.evolution_chain.url);
-            const evoData = await evoRes.json();
-            const chainArr: Array<{ id: number; name: string; image: string; item: string | null; stage: number; generation: number }> = [];
-            const traverse = (node: any, stage = 0) => {
-              const pokeName = node.species.name;
-              const idNum = Number(node.species.url.split('/').slice(-2, -1)[0]);
-              const img = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${idNum}.png`;
-              const itemReq = node.evolution_details?.[0]?.item?.name ?? null;
-              const generation = getGeneration(idNum);
-              chainArr.push({ id: idNum, name: pokeName, image: img, item: itemReq, stage, generation });
-              node.evolves_to.forEach((child: any) => traverse(child, stage + 1));
-            };
-            traverse(evoData.chain);
-            setEvolutionChain(chainArr);
-          } catch (err) {
-            console.error('evo chain fetch error', err);
-          }
+        try {
+          const chainTyped = await fetchEvolutionChain(details.species.url);
+          setEvoChain(chainTyped);
+        } catch (err) {
+          console.error('typed evo fetch error', err);
         }
 
         setLoading(false);
@@ -355,17 +360,25 @@ export const PokemonDetail: React.FC = () => {
                 </div>
 
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">{t('abilities')}</h2>
+                  <h2 className="text-xl font-semibold mb-2 cursor-pointer" onClick={() => setSelectedAbility(null)}>
+                    {t('abilities')}
+                  </h2>
                   <div className="flex flex-wrap gap-2">
-                    {pokemon.abilities.map((ability) => (
-                      <span
-                        key={ability}
-                        className="bg-gray-100 px-3 py-1 rounded-full text-sm capitalize"
+                    {abilitiesInfo.map((ab) => (
+                      <button
+                        key={ab.name}
+                        onClick={() => setSelectedAbility(selectedAbility === ab.name ? null : ab.name)}
+                        className={`px-3 py-1 rounded-full text-sm capitalize shadow ${selectedAbility === ab.name ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
                       >
-                        {ability.replace('-', ' ')}
-                      </span>
+                        {ab.name.replace('-', ' ')}
+                      </button>
                     ))}
                   </div>
+                  {selectedAbility && (
+                    <div className="mt-3 p-3 border rounded bg-gray-50 text-sm">
+                      {abilitiesInfo.find((a) => a.name === selectedAbility)?.effect}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -392,141 +405,53 @@ export const PokemonDetail: React.FC = () => {
                               className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-1000"
                               style={{ width: `${Math.min((value / 255) * 100, 100)}%` }}
                             />
-                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                      </div>
+                    );
+                  })}
                 </div>
-
-                {/* Evolution Chain */}
-                {evolutionChain.length > 1 && (
-                  <div className="mt-10">
-                    <h2 className="text-xl font-semibold mb-4">{t('evolutionChain') ?? 'Evolution Chain'}</h2>
-                    <div className="flex flex-col gap-4">
-                      {(() => {
-                        console.log(evolutionChain); // Log the evolution chain data
-                        // Group by stage
-                        const grouped = evolutionChain.reduce<Record<number, typeof evolutionChain>>((acc, evo) => {
-                          acc[evo.stage] = acc[evo.stage] ? [...acc[evo.stage], evo] : [evo];
-                          return acc;
-                        }, {});
-
-                        // Get all stages sorted
-                        const stages = Object.keys(grouped).map(Number).sort((a, b) => a - b);
-                        
-                        // Build all possible evolution paths
-                        const buildPaths = (currentStage: number, currentPath: any[]): any[] => {
-                          if (currentStage > Math.max(...stages)) return [currentPath];
-                          
-                          const nextEvolutions = grouped[currentStage] || [];
-                          if (nextEvolutions.length === 0) return [currentPath];
-                          
-                          let allPaths: any[] = [];
-                          for (const evo of nextEvolutions) {
-                            const newPath = [...currentPath, evo];
-                            const subPaths = buildPaths(currentStage + 1, newPath);
-                            allPaths = [...allPaths, ...subPaths];
-                          }
-                          
-                          return allPaths;
-                        };
-                        
-                        // Start with base Pokémon
-                        const basePokemons = grouped[0] || [];
-                        const allPaths: any[] = [];
-                        for (const base of basePokemons) {
-                          const basePaths = buildPaths(1, [base]);
-                          allPaths.push(...basePaths);
-                        }
-                        
-                        // Render each path
-                        return allPaths.map((path, pathIndex) => (
-                          <div key={pathIndex} className="flex items-center gap-4">
-                            {path.map((evo: any, idx: number) => (
-                              <React.Fragment key={evo.id}>
-                                {evo.id !== pokemon.id ? (
-                                  <div className="flex flex-col items-center">
-                                    <Link to={`/pokemon/${evo.id}`} className="flex flex-col items-center hover:opacity-80">
-                                      <img src={evo.image} alt={evo.name} className="w-16 h-16 object-contain" />
-                                      <span className="capitalize text-sm mt-1">
-                                        {pokemonNameTranslations[evo.name]?.[language] ?? evo.name}
-                                      </span>
-                                      <span className="text-xs text-gray-500 mt-1">
-                                        Gen {evo.generation}
-                                      </span>
-                                      <span className="text-xs text-gray-500 mt-1">
-                                        {getRegion(evo.generation)}
-                                      </span>
-                                    </Link>
-                                    {evo.item && (
-                                      <span className="text-xs mt-1">
-                                        {evo.item}
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col items-center opacity-50">
-                                    <div className="flex flex-col items-center">
-                                      <img src={evo.image} alt={evo.name} className="w-16 h-16 object-contain" />
-                                      <span className="capitalize text-sm mt-1">
-                                        {pokemonNameTranslations[evo.name]?.[language] ?? evo.name}
-                                      </span>
-                                      <span className="text-xs text-gray-500 mt-1">
-                                        Gen {evo.generation}
-                                      </span>
-                                      <span className="text-xs text-gray-500 mt-1">
-                                        {getRegion(evo.generation)}
-                                      </span>
-                                    </div>
-                                    {evo.item && (
-                                      <span className="text-xs mt-1">
-                                        {evo.item}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                {idx < path.length - 1 && <span className="text-2xl">→</span>}
-                              </React.Fragment>
-                            ))}
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* Evolution Chain */}
+              {evoChain && (
+                <div className="mt-10">
+                  <h2 className="text-xl font-semibold mb-4">{t('evolutionChain') ?? 'Evolution Chain'}</h2>
+                  <EvolutionChain chain={evoChain} megaForms={formSprites.mega ? [{ spriteUrl: formSprites.mega.normal, detailsText: 'Mega Stone' }] : []} />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+     </div>
     </div>
   );
 };
 
-const getGeneration = (id: number): number => {
-  if (id >= 152 && id <= 251) return 2;
-  else if (id >= 252 && id <= 386) return 3;
-  else if (id >= 387 && id <= 493) return 4;
-  else if (id >= 494 && id <= 649) return 5;
-  else if (id >= 650 && id <= 721) return 6;
-  else if (id >= 722 && id <= 809) return 7;
-  else if (id >= 810 && id <= 905) return 8;
-  else if (id >= 906) return 9;
-  return 1;
-};
+// const getGeneration = (id: number): number => {
+//   if (id >= 152 && id <= 251) return 2;
+//   else if (id >= 252 && id <= 386) return 3;
+//   else if (id >= 387 && id <= 493) return 4;
+//   else if (id >= 494 && id <= 649) return 5;
+//   else if (id >= 650 && id <= 721) return 6;
+//   else if (id >= 722 && id <= 809) return 7;
+//   else if (id >= 810 && id <= 905) return 8;
+//   else if (id >= 906) return 9;
+//   return 1;
+// };
 
-const getRegion = (generation: number): string => {
-  switch(generation) {
-    case 1: return 'Kanto';
-    case 2: return 'Johto';
-    case 3: return 'Hoenn';
-    case 4: return 'Sinnoh';
-    case 5: return 'Unova';
-    case 6: return 'Kalos';
-    case 7: return 'Alola';
-    case 8: return 'Galar';
-    case 9: return 'Paldea';
-    default: return '';
-  }
-};
+// const getRegion = (generation: number): string => {
+//   switch(generation) {
+//     case 1: return 'Kanto';
+//     case 2: return 'Johto';
+//     case 3: return 'Hoenn';
+//     case 4: return 'Sinnoh';
+//     case 5: return 'Unova';
+//     case 6: return 'Kalos';
+//     case 7: return 'Alola';
+//     case 8: return 'Galar';
+//     case 9: return 'Paldea';
+//     default: return '';
+//   }
+// };
