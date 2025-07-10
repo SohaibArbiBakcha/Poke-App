@@ -5,19 +5,29 @@ import { Filters } from '../components/Filters';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useLanguage } from '../contexts/LanguageContext';
 
+const defaultFilters: PokemonFilters = {
+  name: '',
+  types: [],
+  generation: null,
+  legendary: null,
+  mythical: null,
+  forms: [],
+};
+
 export const PokemonList: React.FC = () => {
   const { t } = useLanguage();
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<PokemonFilters>({
-    name: '',
-    types: [],
-    generation: null,
-    legendary: null,
-    mythical: null,
-    forms: [],
+  const [filters, setFilters] = useState<PokemonFilters>(() => {
+    const stored = localStorage.getItem('pokemonFilters');
+    return stored ? (JSON.parse(stored) as PokemonFilters) : defaultFilters;
   });
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+
+  // Persist filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('pokemonFilters', JSON.stringify(filters));
+  }, [filters]);
 
   const regions = [
     { id: 'kanto', name: 'Kanto', generations: [1] },
@@ -44,6 +54,14 @@ export const PokemonList: React.FC = () => {
   };
 
   useEffect(() => {
+    // If data is cached, use it and skip network request
+    const cached = localStorage.getItem('pokemonData');
+    if (cached) {
+      setPokemon(JSON.parse(cached));
+      setLoading(false);
+      return;
+    }
+
     // Fetch utility: process promises in small batches to avoid overwhelming browser & API
     const runBatches = async <T,>(tasks: (() => Promise<T>)[], batchSize = 25): Promise<T[]> => {
       const results: T[] = [];
@@ -150,6 +168,7 @@ export const PokemonList: React.FC = () => {
         // Sort by ID to maintain proper order
         pokemonDetails.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
         setPokemon(pokemonDetails);
+        localStorage.setItem('pokemonData', JSON.stringify(pokemonDetails));
         setLoading(false);
       } catch (error) {
         console.error('Error fetching Pokemon:', error);
