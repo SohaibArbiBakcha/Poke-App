@@ -22,6 +22,7 @@ export interface Pokemon {
   abilities: string[];
   legendary: boolean;
   mythical: boolean;
+  paradox: boolean;
   form: 'alolan' | 'galarian' | 'mega' | 'normal';
   altForms?: ('alolan' | 'galarian' | 'mega')[];
 }
@@ -52,5 +53,6 @@ export interface PokemonFilters {
   generation: number | null;
   legendary: boolean | null; // true = only legendary, false = only non-legendary, null = ignore
   mythical: boolean | null;  // same logic
+  paradox: boolean | null; // true = only paradox, false = only non-paradox, null = ignore
   forms: ('alolan' | 'galarian' | 'mega' | 'normal')[]; // empty = any
 }

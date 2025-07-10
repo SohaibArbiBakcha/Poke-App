@@ -119,6 +119,7 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
       generation: null,
       legendary: null,
       mythical: null,
+    paradox: null,
       forms: []
     });
   };
@@ -156,7 +157,7 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
         <h3 className="flex items-center gap-2 font-semibold mb-4 text-lg">
           {t('special') ?? 'Special'}
         </h3>
-        <div className="grid grid-cols-5 gap-3 justify-items-center">
+        <div className="grid grid-cols-6 gap-3 justify-items-center">
           <button
             className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.legendary ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
             onClick={handleLegendaryToggle}
@@ -172,6 +173,14 @@ export const Filters: React.FC<FiltersProps> = ({ filters, onFilterChange }) => 
           >
             <Sparkles className="w-6 h-6 text-purple-600" />
             <span className="text-[10px] mt-1">Mythical</span>
+          </button>
+          <button
+            className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.paradox ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}
+            onClick={() => onFilterChange({ ...filters, paradox: filters.paradox ? null : true })}
+            title="Paradox"
+          >
+            🌀
+            <span className="text-[10px] mt-1">Paradox</span>
           </button>
           <button
             className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center transition-all ${filters.forms.includes('alolan') ? 'bg-red-200 shadow-lg' : 'hover:bg-gray-100'}`}

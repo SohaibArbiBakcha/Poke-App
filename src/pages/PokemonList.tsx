@@ -3,6 +3,7 @@ import { Pokemon, PokemonFilters } from '../types/pokemon';
 import { PokemonCard } from '../components/PokemonCard';
 import { Filters } from '../components/Filters';
 import { LanguageSelector } from '../components/LanguageSelector';
+import { isParadox } from '../utils/paradoxList';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const defaultFilters: PokemonFilters = {
@@ -11,6 +12,7 @@ const defaultFilters: PokemonFilters = {
   generation: null,
   legendary: null,
   mythical: null,
+  paradox: null,
   forms: [],
 };
 
@@ -55,11 +57,20 @@ export const PokemonList: React.FC = () => {
 
   useEffect(() => {
     // If data is cached, use it and skip network request
-    const cached = localStorage.getItem('pokemonData');
-    if (cached) {
-      setPokemon(JSON.parse(cached));
-      setLoading(false);
-      return;
+    const cachedStr = localStorage.getItem('pokemonData');
+    if (cachedStr) {
+      try {
+        const cached: Pokemon[] = JSON.parse(cachedStr);
+        if (cached.length && cached[0] && (cached[0] as any).paradox !== undefined) {
+          setPokemon(cached);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // fallthrough to refetch
+      }
+      // If missing paradox property or parse error, clear cache so we refetch fresh data
+      localStorage.removeItem('pokemonData');
     }
 
     // Fetch utility: process promises in small batches to avoid overwhelming browser & API
@@ -146,6 +157,7 @@ export const PokemonList: React.FC = () => {
             generation,
             legendary: species?.is_legendary ?? false,
             mythical: species?.is_mythical ?? false,
+            paradox: isParadox(details.id),
             form,
             altForms,
             imageUrl,
@@ -194,16 +206,17 @@ export const PokemonList: React.FC = () => {
     
     const legendaryMatch = filters.legendary === null || p.legendary === filters.legendary;
     const mythicalMatch = filters.mythical === null || p.mythical === filters.mythical;
+    const paradoxMatch = filters.paradox === null || p.paradox === filters.paradox;
     const formMatch =
       filters.forms.length === 0 ||
       (p.form !== 'normal' && filters.forms.includes(p.form as any)) ||
       (p.altForms && filters.forms.filter((f) => f !== 'normal').some((f) => p.altForms!.includes(f)));
 
-    if (!selectedRegion) return nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && formMatch;
+    if (!selectedRegion) return nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
     const region = regions.find(r => r.id === selectedRegion);
-    if (!region) return nameMatch && typeMatch && legendaryMatch && mythicalMatch && formMatch;
+    if (!region) return nameMatch && typeMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
     const generation = getGeneration(p.id);
-    return region.generations.includes(generation) && nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && formMatch;
+    return region.generations.includes(generation) && nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
   });
 
   if (loading) {

@@ -5,7 +5,10 @@ import { Pokemon } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { EvolutionChain } from '../components/EvolutionChain';
+import { EvolutionNode } from '../types/pokemon';
 import { fetchEvolutionChain } from '../utils/evolution';
+import { isParadox } from '../utils/paradoxList';
+import { getOriginId } from '../utils/paradoxOrigins';
 
 // Tailwind gradient classes for type backgrounds
 export const typeColors: Record<string, string> = {
@@ -61,8 +64,16 @@ export const PokemonDetailFixed: React.FC = () => {
   const [abilitiesInfo, setAbilitiesInfo] = useState<AbilityInfo[]>([]);
   const [selectedAbility, setSelectedAbility] = useState<string | null>(null);
   const [evoChain, setEvoChain] = useState<EvolutionNode | null>(null);
-  const [currentForm, setCurrentForm] = useState<'normal' | 'mega'>('normal');
-  const [formSprites, setFormSprites] = useState<FormSprites>({ normal: { normal: '', shiny: '' } });
+  type AbilityInfo = { name: string; effect: string };
+interface FormSprites {
+  normal: { normal: string; shiny: string };
+  mega?: { normal: string; shiny: string };
+}
+
+// currently only shiny toggle used; keeping formSprites reserved for future
+const [currentForm] = useState<'normal' | 'mega'>('normal');
+  const [formSprites] = useState<FormSprites>({ normal: { normal: '', shiny: '' } });
+const [origin, setOrigin] = useState<{ id: number; name: string; image: string } | null>(null);
 
   // Fetch data
   useEffect(() => {
@@ -74,6 +85,8 @@ export const PokemonDetailFixed: React.FC = () => {
         const species = await speciesResp.json();
 
         const translatedName = species.names.find((n: any) => n.language.name === language)?.name ?? details.name;
+
+        
 
         setPokemon({
           id: details.id,
@@ -115,6 +128,20 @@ export const PokemonDetailFixed: React.FC = () => {
           setEvoChain(chain);
         } catch (err) {
           console.error('evo chain fetch failed', err);
+        }
+
+        // Origin Pokémon for paradox species
+        if (isParadox(details.id)) {
+          const originId = getOriginId(details.id);
+          if (originId) {
+            try {
+              const oResp = await fetch(`https://pokeapi.co/api/v2/pokemon/${originId}`);
+              const oData = await oResp.json();
+              setOrigin({ id: originId, name: oData.name, image: oData.sprites.other['official-artwork'].front_default });
+            } catch (err) {
+              console.error('origin fetch failed', err);
+            }
+          }
         }
 
         setLoading(false);
@@ -229,6 +256,16 @@ export const PokemonDetailFixed: React.FC = () => {
                 {/* <StatsRadar stats={pokemon.stats} /> */}
               </div>
             </div>
+
+            {origin && (
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-2">{t('originPokemon') ?? 'Origin Pokémon'}</h2>
+                <Link to={`/pokemon/${origin.id}`} className="flex items-center gap-4 p-4 bg-gray-100 rounded hover:shadow">
+                  <img src={origin.image} alt={origin.name} className="w-16 h-16 object-contain" />
+                  <span className="capitalize font-medium">{origin.name.replace('-', ' ')}</span>
+                </Link>
+              </div>
+            )}
 
             {/* evolution chain */}
             {evoChain && (

@@ -205,6 +205,7 @@ export const PokemonDetail: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin" />
+        <img src="https://i.gifer.com/2iiJ.gif" alt="Loading" className="w-16 h-16 object-contain" />
         <span className="ml-2">{t('loading')}</span>
       </div>
     );
