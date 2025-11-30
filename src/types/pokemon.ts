@@ -45,6 +45,26 @@ export interface EvolutionNode {
   evolvesTo: EvolutionNode[];           // list of next evolutions (can branch)
 }
 
+// Move types --------------------------------------------------------------------------------------------------
+export interface Move {
+  name: string;
+  type: string;
+  power: number | null;
+  accuracy: number | null;
+  pp: number;
+  damageClass: string; // physical, special, status
+  effect: string;
+  learnMethod: string; // level-up, machine, egg, tutor
+  levelLearnedAt?: number;
+}
+
+export interface MovesByMethod {
+  levelUp: Move[];
+  machine: Move[];
+  egg: Move[];
+  tutor: Move[];
+}
+
 // ------------------------------------------------------------------------------------------------------------------
 
 export interface PokemonFilters {

@@ -34,12 +34,43 @@ const translations = {
     // Loading and Errors
     loading: 'Loading...',
     pokemonNotFound: 'Pokémon not found',
-    
+
     // Language selector
     language: 'Language',
     english: 'English',
     french: 'Français',
-    arabic: 'العربية'
+    arabic: 'العربية',
+
+    // Moves
+    moves: 'Moves',
+    levelUpMoves: 'Level Up',
+    tmMoves: 'TM/HM',
+    eggMoves: 'Egg Moves',
+    tutorMoves: 'Tutor',
+    evolutionChain: 'Evolution Chain',
+
+    // Battle Simulator
+    battleSimulator: 'Battle Simulator',
+    selectBattleMode: 'Select Battle Mode',
+    team1: 'Team 1',
+    team2: 'Team 2',
+    addPokemon: 'Add Pokémon',
+    selectPokemon: 'Select Pokémon',
+    level: 'Level',
+    ivs: 'Individual Values (IVs)',
+    maxAllIVs: 'Max All IVs (31)',
+    back: 'Back',
+    confirm: 'Confirm',
+    next: 'Next: Select Moves',
+    startBattle: 'Start Battle!',
+    selectMove: 'Select Move',
+    selectMoves: 'Select 1-4 Moves',
+    availableMoves: 'Available Moves',
+    selectedMoves: 'Selected Moves',
+    executeTurn: 'Execute Turn',
+    wins: 'Wins',
+    newBattle: 'New Battle',
+    battleLog: 'Battle Log'
   },
   fr: {
     // Header
@@ -66,12 +97,43 @@ const translations = {
     // Loading and Errors
     loading: 'Chargement...',
     pokemonNotFound: 'Pokémon introuvable',
-    
+
     // Language selector
     language: 'Langue',
     english: 'English',
     french: 'Français',
-    arabic: 'العربية'
+    arabic: 'العربية',
+
+    // Moves
+    moves: 'Capacités',
+    levelUpMoves: 'Niveau',
+    tmMoves: 'CT/CS',
+    eggMoves: 'Œuf',
+    tutorMoves: 'Tuteur',
+    evolutionChain: 'Chaîne d\'évolution',
+
+    // Battle Simulator
+    battleSimulator: 'Simulateur de Combat',
+    selectBattleMode: 'Sélectionner le mode de combat',
+    team1: 'Équipe 1',
+    team2: 'Équipe 2',
+    addPokemon: 'Ajouter un Pokémon',
+    selectPokemon: 'Sélectionner un Pokémon',
+    level: 'Niveau',
+    ivs: 'Valeurs Individuelles (IV)',
+    maxAllIVs: 'Maximiser tous les IV (31)',
+    back: 'Retour',
+    confirm: 'Confirmer',
+    next: 'Suivant: Sélectionner les Capacités',
+    startBattle: 'Commencer le Combat!',
+    selectMove: 'Sélectionner une Capacité',
+    selectMoves: 'Sélectionner 1-4 Capacités',
+    availableMoves: 'Capacités Disponibles',
+    selectedMoves: 'Capacités Sélectionnées',
+    executeTurn: 'Exécuter le Tour',
+    wins: 'Gagne',
+    newBattle: 'Nouveau Combat',
+    battleLog: 'Journal de Combat'
   },
   ar: {
     // Header
@@ -98,12 +160,43 @@ const translations = {
     // Loading and Errors
     loading: 'جاري التحميل...',
     pokemonNotFound: 'لم يتم العثور على البوكيمون',
-    
+
     // Language selector
     language: 'اللغة',
     english: 'English',
     french: 'Français',
-    arabic: 'العربية'
+    arabic: 'العربية',
+
+    // Moves
+    moves: 'الحركات',
+    levelUpMoves: 'بالمستوى',
+    tmMoves: 'الآلات',
+    eggMoves: 'البيض',
+    tutorMoves: 'المعلم',
+    evolutionChain: 'سلسلة التطور',
+
+    // Battle Simulator
+    battleSimulator: 'محاكي المعركة',
+    selectBattleMode: 'اختر نمط المعركة',
+    team1: 'الفريق 1',
+    team2: 'الفريق 2',
+    addPokemon: 'إضافة بوكيمون',
+    selectPokemon: 'اختر بوكيمون',
+    level: 'المستوى',
+    ivs: 'القيم الفردية',
+    maxAllIVs: 'تعظيم جميع القيم (31)',
+    back: 'رجوع',
+    confirm: 'تأكيد',
+    next: 'التالي: اختر الحركات',
+    startBattle: 'ابدأ المعركة!',
+    selectMove: 'اختر الحركة',
+    selectMoves: 'اختر 1-4 حركات',
+    availableMoves: 'الحركات المتاحة',
+    selectedMoves: 'الحركات المختارة',
+    executeTurn: 'تنفيذ الدور',
+    wins: 'يفوز',
+    newBattle: 'معركة جديدة',
+    battleLog: 'سجل المعركة'
   }
 };
 

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Pokemon, PokemonFilters } from '../types/pokemon';
 import { PokemonCard } from '../components/PokemonCard';
 import { Filters } from '../components/Filters';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { isParadox } from '../utils/paradoxList';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Swords } from 'lucide-react';
 
 const defaultFilters: PokemonFilters = {
   name: '',
@@ -233,13 +235,22 @@ export const PokemonList: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div className="flex justify-center flex-1">
-            <img 
+            <img
               src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/1200px-International_Pok%C3%A9mon_logo.svg.png"
               alt={t('pokemonLogo')}
               className="h-24 object-contain"
             />
           </div>
-          <LanguageSelector />
+          <div className="flex gap-3 items-center">
+            <Link
+              to="/battle"
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <Swords size={20} />
+              {t('battleSimulator')}
+            </Link>
+            <LanguageSelector />
+          </div>
         </div>
         <div className="mb-8">
           <Filters filters={filters} onFilterChange={setFilters} />

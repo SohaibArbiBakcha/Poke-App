@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { PokemonList } from './pages/PokemonList';
 import { PokemonDetail } from './pages/PokemonDetail';
+import { BattleSimulator } from './pages/BattleSimulator';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
           <Routes>
             <Route path="/" element={<PokemonList />} />
             <Route path="/pokemon/:id" element={<PokemonDetail />} />
+            <Route path="/battle" element={<BattleSimulator />} />
           </Routes>
         </div>
       </Router>

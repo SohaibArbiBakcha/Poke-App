@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import { Pokemon } from '../types/pokemon';
+import { ArrowLeft, Loader2, Zap, Shield, Heart } from 'lucide-react';
+import { Pokemon, Move, MovesByMethod } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { pokemonNameTranslations } from '../utils/pokemonTranslations';
@@ -64,6 +64,9 @@ export const PokemonDetail: React.FC = () => {
   const [selectedAbility, setSelectedAbility] = useState<string | null>(null);
   const [formSprites, setFormSprites] = useState<Partial<Record<'alolan' | 'galarian' | 'mega', { normal: string; shiny: string | null }>>>({});
   const [evoChain, setEvoChain] = useState<EvolutionNode | null>(null);
+  const [moves, setMoves] = useState<MovesByMethod>({ levelUp: [], machine: [], egg: [], tutor: [] });
+  const [selectedMoveTab, setSelectedMoveTab] = useState<'levelUp' | 'machine' | 'egg' | 'tutor'>('levelUp');
+  const [loadingMoves, setLoadingMoves] = useState(false);
 
   useEffect(() => {
     const fetchPokemonDetail = async () => {
@@ -192,9 +195,63 @@ export const PokemonDetail: React.FC = () => {
         }
 
         setLoading(false);
+
+        // Fetch moves (after setting loading to false so page renders faster)
+        fetchMoves(details.id);
       } catch (error) {
         console.error('Error fetching Pokemon details:', error);
         setLoading(false);
+      }
+    };
+
+    const fetchMoves = async (pokemonId: number) => {
+      setLoadingMoves(true);
+      try {
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+        const data = await response.json();
+
+        const movePromises = data.moves.slice(0, 100).map(async (moveEntry: any) => {
+          try {
+            const moveRes = await fetch(moveEntry.move.url);
+            const moveData = await moveRes.json();
+
+            const versionDetails = moveEntry.version_group_details[0];
+            const learnMethod = versionDetails.move_learn_method.name;
+            const levelLearnedAt = versionDetails.level_learned_at;
+
+            const effectEntry = moveData.effect_entries.find((e: any) => e.language.name === 'en');
+
+            return {
+              name: moveData.name,
+              type: moveData.type.name,
+              power: moveData.power,
+              accuracy: moveData.accuracy,
+              pp: moveData.pp,
+              damageClass: moveData.damage_class.name,
+              effect: effectEntry?.short_effect || effectEntry?.effect || 'No description available',
+              learnMethod: learnMethod,
+              levelLearnedAt: levelLearnedAt > 0 ? levelLearnedAt : undefined
+            } as Move;
+          } catch (err) {
+            console.error('Error fetching move', err);
+            return null;
+          }
+        });
+
+        const allMoves = (await Promise.all(movePromises)).filter((m): m is Move => m !== null);
+
+        const categorized: MovesByMethod = {
+          levelUp: allMoves.filter(m => m.learnMethod === 'level-up').sort((a, b) => (a.levelLearnedAt || 0) - (b.levelLearnedAt || 0)),
+          machine: allMoves.filter(m => m.learnMethod === 'machine'),
+          egg: allMoves.filter(m => m.learnMethod === 'egg'),
+          tutor: allMoves.filter(m => m.learnMethod === 'tutor')
+        };
+
+        setMoves(categorized);
+        setLoadingMoves(false);
+      } catch (err) {
+        console.error('Error fetching moves:', err);
+        setLoadingMoves(false);
       }
     };
 
@@ -420,6 +477,105 @@ export const PokemonDetail: React.FC = () => {
                   <EvolutionChain chain={evoChain} megaForms={formSprites.mega ? [{ spriteUrl: formSprites.mega.normal, detailsText: 'Mega Stone' }] : []} />
                 </div>
               )}
+
+              {/* Moves Section */}
+              <div className="mt-10 md:col-span-2">
+                <h2 className="text-xl font-semibold mb-4">{t('moves') ?? 'Moves'}</h2>
+
+                {/* Move tabs */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMoveTab('levelUp')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      selectedMoveTab === 'levelUp'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t('levelUpMoves') ?? 'Level Up'} ({moves.levelUp.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMoveTab('machine')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      selectedMoveTab === 'machine'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t('tmMoves') ?? 'TM/HM'} ({moves.machine.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMoveTab('egg')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      selectedMoveTab === 'egg'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t('eggMoves') ?? 'Egg Moves'} ({moves.egg.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMoveTab('tutor')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      selectedMoveTab === 'tutor'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t('tutorMoves') ?? 'Tutor'} ({moves.tutor.length})
+                  </button>
+                </div>
+
+                {/* Moves list */}
+                {loadingMoves ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="animate-spin mr-2" size={24} />
+                    <span>{t('loading')}</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+                    {moves[selectedMoveTab].map((move, idx) => (
+                      <div
+                        key={`${move.name}-${idx}`}
+                        className="bg-gray-50 rounded-lg p-3 hover:shadow-md transition-shadow border border-gray-200"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <h3 className="font-semibold capitalize text-sm">{move.name.replace('-', ' ')}</h3>
+                            {move.levelLearnedAt && (
+                              <span className="text-xs text-gray-600">Lv. {move.levelLearnedAt}</span>
+                            )}
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize bg-gradient-to-r ${typeColors[move.type]} text-white`}>
+                            {move.type}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-gray-700 mb-2">
+                          {move.damageClass === 'physical' && <Zap size={14} className="text-orange-500" />}
+                          {move.damageClass === 'special' && <Shield size={14} className="text-purple-500" />}
+                          {move.damageClass === 'status' && <Heart size={14} className="text-pink-500" />}
+                          <span className="capitalize">{move.damageClass}</span>
+                          {move.power && <span>| Power: {move.power}</span>}
+                          {move.accuracy && <span>| Acc: {move.accuracy}%</span>}
+                          <span>| PP: {move.pp}</span>
+                        </div>
+
+                        <p className="text-xs text-gray-600 line-clamp-2">{move.effect}</p>
+                      </div>
+                    ))}
+                    {moves[selectedMoveTab].length === 0 && (
+                      <div className="col-span-full text-center text-gray-500 py-8">
+                        No moves available in this category
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
