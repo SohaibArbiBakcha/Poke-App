@@ -6,6 +6,8 @@ import { BattlePokemon, BattleState } from '../types/battle';
 import { PokemonBattleSelector } from '../components/PokemonBattleSelector';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { TypeDefenses } from '../components/TypeDefenses';
+import { StatChangesDisplay } from '../components/StatChangeIndicator';
+import { BattleStatsDisplay } from '../components/BattleStatsDisplay';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   calculateDamage,
@@ -390,9 +392,24 @@ export const BattleSimulator: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Battle Stats */}
+                      <div className="mb-3">
+                        <BattleStatsDisplay stats={pokemon.baseStats} compact={true} />
+                      </div>
+
                       {/* Type Defenses */}
                       {idx === battleState.activeIndex1 && (
                         <TypeDefenses types={pokemon.types} />
+                      )}
+
+                      {/* Stat Changes Display (if Mega Evolved) */}
+                      {pokemon.isMegaEvolved && pokemon.originalBaseStats && (
+                        <StatChangesDisplay
+                          originalStats={pokemon.originalBaseStats}
+                          newStats={pokemon.baseStats}
+                          originalTypes={pokemon.originalTypes}
+                          newTypes={pokemon.types}
+                        />
                       )}
                     </div>
                   ))}
@@ -448,9 +465,24 @@ export const BattleSimulator: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Battle Stats */}
+                      <div className="mb-3">
+                        <BattleStatsDisplay stats={pokemon.baseStats} compact={true} />
+                      </div>
+
                       {/* Type Defenses */}
                       {idx === battleState.activeIndex2 && (
                         <TypeDefenses types={pokemon.types} />
+                      )}
+
+                      {/* Stat Changes Display (if Mega Evolved) */}
+                      {pokemon.isMegaEvolved && pokemon.originalBaseStats && (
+                        <StatChangesDisplay
+                          originalStats={pokemon.originalBaseStats}
+                          newStats={pokemon.baseStats}
+                          originalTypes={pokemon.originalTypes}
+                          newTypes={pokemon.types}
+                        />
                       )}
                     </div>
                   ))}
