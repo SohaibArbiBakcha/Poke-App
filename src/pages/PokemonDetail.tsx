@@ -8,6 +8,7 @@ import { pokemonNameTranslations } from '../utils/pokemonTranslations';
 import { EvolutionNode } from '../types/pokemon';
 import { fetchEvolutionChain } from '../utils/evolution';
 import { EvolutionChain } from '../components/EvolutionChain';
+import { TypeDefenses } from '../components/TypeDefenses';
 
 const typeColors: Record<string, string> = {
   normal: 'from-gray-400 to-gray-300',
@@ -480,6 +481,11 @@ export const PokemonDetail: React.FC = () => {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Type Defenses */}
+                <div className="mt-6">
+                  <TypeDefenses types={pokemon.types} />
                 </div>
               </div>
 

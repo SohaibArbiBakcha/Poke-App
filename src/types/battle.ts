@@ -32,6 +32,18 @@ export interface BattlePokemon {
   moves: Move[];
   heldItem?: string;
   status?: 'burn' | 'freeze' | 'paralysis' | 'poison' | 'sleep' | null;
+  isMegaEvolved?: boolean;
+  megaForm?: string;
+  originalImageUrl?: string; // Store original sprite before mega evolution
+  originalTypes?: string[]; // Store original types before mega evolution
+  originalBaseStats?: {
+    hp: number;
+    attack: number;
+    defense: number;
+    specialAttack: number;
+    specialDefense: number;
+    speed: number;
+  };
 }
 
 export interface BattleTeam {

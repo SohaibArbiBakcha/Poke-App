@@ -5,6 +5,7 @@ import { Pokemon } from '../types/pokemon';
 import { BattlePokemon, BattleState } from '../types/battle';
 import { PokemonBattleSelector } from '../components/PokemonBattleSelector';
 import { LanguageSelector } from '../components/LanguageSelector';
+import { TypeDefenses } from '../components/TypeDefenses';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   calculateDamage,
@@ -14,6 +15,7 @@ import {
   applyStatusEffect,
   initializePokemonStats
 } from '../utils/battleCalculations';
+import { getMegaEvolutionByStone, applyMegaEvolution } from '../utils/megaEvolution';
 
 export const BattleSimulator: React.FC = () => {
   const { t, language } = useLanguage();
@@ -195,6 +197,50 @@ export const BattleSimulator: React.FC = () => {
     setTeam2Pokemon([]);
   };
 
+  const handleMegaEvolution = (team: 1 | 2, pokemonIndex: number) => {
+    if (!battleState) return;
+
+    const newState = { ...battleState };
+    const pokemon = team === 1
+      ? newState.team1.pokemon[pokemonIndex]
+      : newState.team2.pokemon[pokemonIndex];
+
+    // Check if already mega evolved
+    if (pokemon.isMegaEvolved) {
+      alert('This Pokémon is already Mega Evolved!');
+      return;
+    }
+
+    // Check if has mega stone
+    if (!pokemon.heldItem) {
+      alert('This Pokémon is not holding a Mega Stone!');
+      return;
+    }
+
+    // Get mega evolution data
+    const megaData = getMegaEvolutionByStone(pokemon.id, pokemon.heldItem);
+    if (!megaData) {
+      alert('This item cannot trigger Mega Evolution!');
+      return;
+    }
+
+    // Apply mega evolution
+    const megaEvolvedPokemon = applyMegaEvolution(pokemon, megaData);
+
+    // Update the pokemon in the team
+    if (team === 1) {
+      newState.team1.pokemon[pokemonIndex] = megaEvolvedPokemon;
+    } else {
+      newState.team2.pokemon[pokemonIndex] = megaEvolvedPokemon;
+    }
+
+    const newLog = [...battleLog];
+    newLog.push(`${pokemon.translatedNames[language]} Mega Evolved into Mega ${pokemon.translatedNames[language]}!`);
+
+    setBattleState(newState);
+    setBattleLog(newLog);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -302,14 +348,30 @@ export const BattleSimulator: React.FC = () => {
                       <div className="flex items-center gap-4 mb-2">
                         <img src={pokemon.imageUrl} alt={pokemon.name} className="w-24 h-24 object-contain" />
                         <div className="flex-1">
-                          <p className="font-bold text-lg">{pokemon.translatedNames[language]}</p>
+                          <p className="font-bold text-lg">
+                            {pokemon.isMegaEvolved && '⚡ Mega '}
+                            {pokemon.translatedNames[language]}
+                          </p>
                           <p className="text-sm text-gray-600">Lv. {pokemon.level}</p>
+                          {pokemon.heldItem && !pokemon.isMegaEvolved && (
+                            <p className="text-xs text-purple-600 font-semibold">📦 {pokemon.heldItem}</p>
+                          )}
                           {pokemon.status && (
                             <span className="text-xs bg-red-500 text-white px-2 py-1 rounded capitalize">{pokemon.status}</span>
                           )}
+                          {/* Mega Evolution Button */}
+                          {pokemon.heldItem && !pokemon.isMegaEvolved && getMegaEvolutionByStone(pokemon.id, pokemon.heldItem) && idx === battleState.activeIndex1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMegaEvolution(1, idx)}
+                              className="mt-2 px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold rounded-full hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+                            >
+                              ⚡ MEGA EVOLVE
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="relative">
+                      <div className="relative mb-3">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="font-semibold">HP</span>
                           <span>{pokemon.currentHp} / {pokemon.maxHp}</span>
@@ -327,6 +389,11 @@ export const BattleSimulator: React.FC = () => {
                           />
                         </div>
                       </div>
+
+                      {/* Type Defenses */}
+                      {idx === battleState.activeIndex1 && (
+                        <TypeDefenses types={pokemon.types} />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -339,14 +406,30 @@ export const BattleSimulator: React.FC = () => {
                       <div className="flex items-center gap-4 mb-2">
                         <img src={pokemon.imageUrl} alt={pokemon.name} className="w-24 h-24 object-contain" />
                         <div className="flex-1">
-                          <p className="font-bold text-lg">{pokemon.translatedNames[language]}</p>
+                          <p className="font-bold text-lg">
+                            {pokemon.isMegaEvolved && '⚡ Mega '}
+                            {pokemon.translatedNames[language]}
+                          </p>
                           <p className="text-sm text-gray-600">Lv. {pokemon.level}</p>
+                          {pokemon.heldItem && !pokemon.isMegaEvolved && (
+                            <p className="text-xs text-purple-600 font-semibold">📦 {pokemon.heldItem}</p>
+                          )}
                           {pokemon.status && (
                             <span className="text-xs bg-red-500 text-white px-2 py-1 rounded capitalize">{pokemon.status}</span>
                           )}
+                          {/* Mega Evolution Button */}
+                          {pokemon.heldItem && !pokemon.isMegaEvolved && getMegaEvolutionByStone(pokemon.id, pokemon.heldItem) && idx === battleState.activeIndex2 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMegaEvolution(2, idx)}
+                              className="mt-2 px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold rounded-full hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+                            >
+                              ⚡ MEGA EVOLVE
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="relative">
+                      <div className="relative mb-3">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="font-semibold">HP</span>
                           <span>{pokemon.currentHp} / {pokemon.maxHp}</span>
@@ -364,6 +447,11 @@ export const BattleSimulator: React.FC = () => {
                           />
                         </div>
                       </div>
+
+                      {/* Type Defenses */}
+                      {idx === battleState.activeIndex2 && (
+                        <TypeDefenses types={pokemon.types} />
+                      )}
                     </div>
                   ))}
                 </div>

@@ -4,6 +4,7 @@ import { Pokemon } from '../types/pokemon';
 import { BattlePokemon } from '../types/battle';
 import { Move } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getMegaEvolutions, canMegaEvolve } from '../utils/megaEvolution';
 
 interface PokemonBattleSelectorProps {
   allPokemon: Pokemon[];
@@ -61,6 +62,7 @@ export const PokemonBattleSelector: React.FC<PokemonBattleSelectorProps> = ({
   const [loadingMoves, setLoadingMoves] = useState(false);
   const [showMoveSelection, setShowMoveSelection] = useState(false);
   const [moveSearchQuery, setMoveSearchQuery] = useState('');
+  const [selectedItem, setSelectedItem] = useState<string>('');
 
   const filteredPokemon = allPokemon.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -150,7 +152,9 @@ export const PokemonBattleSelector: React.FC<PokemonBattleSelectorProps> = ({
       currentHp: 0, // Will be calculated
       maxHp: 0, // Will be calculated
       moves: selectedMoves,
-      status: null
+      status: null,
+      heldItem: selectedItem || undefined,
+      isMegaEvolved: false
     };
 
     onPokemonSelect(battlePokemon);
@@ -168,6 +172,7 @@ export const PokemonBattleSelector: React.FC<PokemonBattleSelectorProps> = ({
     });
     setSelectedMoves([]);
     setAvailableMoves([]);
+    setSelectedItem('');
   };
 
   return (
@@ -315,6 +320,40 @@ export const PokemonBattleSelector: React.FC<PokemonBattleSelectorProps> = ({
                     >
                       {t('maxAllIVs') ?? 'Max All IVs (31)'}
                     </button>
+                  </div>
+
+                  {/* Held Item Selection */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-3">Held Item (Optional)</h4>
+                    <select
+                      value={selectedItem}
+                      onChange={(e) => setSelectedItem(e.target.value)}
+                      className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      aria-label="Select held item"
+                    >
+                      <option value="">No Item</option>
+                      <optgroup label="Mega Stones">
+                        {canMegaEvolve(selectedForConfig.id) && getMegaEvolutions(selectedForConfig.id).map((mega) => (
+                          <option key={mega.megaStone} value={mega.megaStone}>
+                            {mega.megaStone}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Battle Items">
+                        <option value="Leftovers">Leftovers</option>
+                        <option value="Life Orb">Life Orb</option>
+                        <option value="Choice Band">Choice Band</option>
+                        <option value="Choice Specs">Choice Specs</option>
+                        <option value="Choice Scarf">Choice Scarf</option>
+                        <option value="Focus Sash">Focus Sash</option>
+                        <option value="Assault Vest">Assault Vest</option>
+                      </optgroup>
+                    </select>
+                    {selectedItem && getMegaEvolutions(selectedForConfig.id).find(m => m.megaStone === selectedItem) && (
+                      <p className="text-sm text-purple-600 mt-2 font-semibold">
+                        ⚡ This Pokémon can Mega Evolve during battle!
+                      </p>
+                    )}
                   </div>
 
                   {/* Next Button */}
