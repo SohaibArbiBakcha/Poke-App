@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Zap, Shield, Heart } from 'lucide-react';
+import { ArrowLeft, Loader2, Zap, Shield, Heart, Search } from 'lucide-react';
 import { Pokemon, Move, MovesByMethod } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from '../components/LanguageSelector';
@@ -67,6 +67,7 @@ export const PokemonDetail: React.FC = () => {
   const [moves, setMoves] = useState<MovesByMethod>({ levelUp: [], machine: [], egg: [], tutor: [] });
   const [selectedMoveTab, setSelectedMoveTab] = useState<'levelUp' | 'machine' | 'egg' | 'tutor'>('levelUp');
   const [loadingMoves, setLoadingMoves] = useState(false);
+  const [moveSearchQuery, setMoveSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchPokemonDetail = async () => {
@@ -280,6 +281,11 @@ export const PokemonDetail: React.FC = () => {
     );
   }
 
+  // Helper function to format camelCase to readable text
+  const formatStatName = (name: string): string => {
+    return name.replace(/([A-Z])/g, ' $1').trim();
+  };
+
   const displayName = pokemon.translatedNames[language] || pokemon.name;
   // Choose correct artwork based on selected form and shiny toggle
   const displayImage = currentForm === 'normal'
@@ -292,6 +298,13 @@ export const PokemonDetail: React.FC = () => {
         if (isShiny && sprite.shiny) return sprite.shiny;
         return sprite.normal;
       })();
+
+  // Filter moves based on search query
+  const filteredMoves = moves[selectedMoveTab].filter(move =>
+    move.name.toLowerCase().replace(/-/g, ' ').includes(moveSearchQuery.toLowerCase()) ||
+    move.type.toLowerCase().includes(moveSearchQuery.toLowerCase()) ||
+    move.damageClass.toLowerCase().includes(moveSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-[#FF1C1C] py-8">
@@ -482,6 +495,20 @@ export const PokemonDetail: React.FC = () => {
               <div className="mt-10 md:col-span-2">
                 <h2 className="text-xl font-semibold mb-4">{t('moves') ?? 'Moves'}</h2>
 
+                {/* Search Bar */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                      type="text"
+                      placeholder={t('searchMoves') ?? 'Search moves...'}
+                      className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={moveSearchQuery}
+                      onChange={(e) => setMoveSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+
                 {/* Move tabs */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
@@ -537,40 +564,72 @@ export const PokemonDetail: React.FC = () => {
                     <span>{t('loading')}</span>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                    {moves[selectedMoveTab].map((move, idx) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-2">
+                    {filteredMoves.map((move, idx) => (
                       <div
                         key={`${move.name}-${idx}`}
-                        className="bg-gray-50 rounded-lg p-3 hover:shadow-md transition-shadow border border-gray-200"
+                        className="bg-white rounded-lg p-4 hover:shadow-lg transition-all border-2 border-gray-200 hover:border-blue-300"
                       >
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <h3 className="font-semibold capitalize text-sm">{move.name.replace('-', ' ')}</h3>
+                            <h3 className="font-bold text-base capitalize">{move.name.replace(/-/g, ' ')}</h3>
                             {move.levelLearnedAt && (
-                              <span className="text-xs text-gray-600">Lv. {move.levelLearnedAt}</span>
+                              <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                Level {move.levelLearnedAt}
+                              </span>
                             )}
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize bg-gradient-to-r ${typeColors[move.type]} text-white`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize bg-gradient-to-r ${typeColors[move.type]} text-white shadow-md`}>
                             {move.type}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-gray-700 mb-2">
-                          {move.damageClass === 'physical' && <Zap size={14} className="text-orange-500" />}
-                          {move.damageClass === 'special' && <Shield size={14} className="text-purple-500" />}
-                          {move.damageClass === 'status' && <Heart size={14} className="text-pink-500" />}
-                          <span className="capitalize">{move.damageClass}</span>
-                          {move.power && <span>| Power: {move.power}</span>}
-                          {move.accuracy && <span>| Acc: {move.accuracy}%</span>}
-                          <span>| PP: {move.pp}</span>
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          {move.damageClass === 'physical' && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-semibold">
+                              <Zap size={12} />
+                              Physical
+                            </span>
+                          )}
+                          {move.damageClass === 'special' && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
+                              <Shield size={12} />
+                              Special
+                            </span>
+                          )}
+                          {move.damageClass === 'status' && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-pink-100 text-pink-700 rounded text-xs font-semibold">
+                              <Heart size={12} />
+                              Status
+                            </span>
+                          )}
                         </div>
 
-                        <p className="text-xs text-gray-600 line-clamp-2">{move.effect}</p>
+                        <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+                          {move.power && (
+                            <div className="bg-gray-100 rounded px-2 py-1 text-center">
+                              <div className="text-gray-600 font-medium">Power</div>
+                              <div className="font-bold text-gray-800">{move.power}</div>
+                            </div>
+                          )}
+                          {move.accuracy && (
+                            <div className="bg-gray-100 rounded px-2 py-1 text-center">
+                              <div className="text-gray-600 font-medium">Accuracy</div>
+                              <div className="font-bold text-gray-800">{move.accuracy}%</div>
+                            </div>
+                          )}
+                          <div className="bg-gray-100 rounded px-2 py-1 text-center">
+                            <div className="text-gray-600 font-medium">PP</div>
+                            <div className="font-bold text-gray-800">{move.pp}</div>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{move.effect}</p>
                       </div>
                     ))}
-                    {moves[selectedMoveTab].length === 0 && (
+                    {filteredMoves.length === 0 && (
                       <div className="col-span-full text-center text-gray-500 py-8">
-                        No moves available in this category
+                        {moveSearchQuery ? `No moves found matching "${moveSearchQuery}"` : 'No moves available in this category'}
                       </div>
                     )}
                   </div>

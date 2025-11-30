@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Swords, Heart, Zap } from 'lucide-react';
+import { ArrowLeft, Swords, Heart, Zap, Search } from 'lucide-react';
 import { Pokemon } from '../types/pokemon';
 import { BattlePokemon, BattleState } from '../types/battle';
 import { PokemonBattleSelector } from '../components/PokemonBattleSelector';
@@ -26,6 +26,8 @@ export const BattleSimulator: React.FC = () => {
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [selectedMove1, setSelectedMove1] = useState<number | null>(null);
   const [selectedMove2, setSelectedMove2] = useState<number | null>(null);
+  const [moveSearchTeam1, setMoveSearchTeam1] = useState('');
+  const [moveSearchTeam2, setMoveSearchTeam2] = useState('');
 
   // Load Pokemon data
   useEffect(() => {
@@ -178,6 +180,8 @@ export const BattleSimulator: React.FC = () => {
     setBattleLog(newLog);
     setSelectedMove1(null);
     setSelectedMove2(null);
+    setMoveSearchTeam1('');
+    setMoveSearchTeam2('');
   };
 
   const resetBattle = () => {
@@ -185,6 +189,8 @@ export const BattleSimulator: React.FC = () => {
     setBattleLog([]);
     setSelectedMove1(null);
     setSelectedMove2(null);
+    setMoveSearchTeam1('');
+    setMoveSearchTeam2('');
     setTeam1Pokemon([]);
     setTeam2Pokemon([]);
   };
@@ -369,46 +375,84 @@ export const BattleSimulator: React.FC = () => {
                   {/* Team 1 Moves */}
                   <div className="bg-white rounded-lg p-4 border-2 border-blue-300">
                     <h4 className="font-semibold mb-3">{t('selectMove') ?? 'Select Move'} - {t('team1')}</h4>
+
+                    {/* Search Input */}
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder={t('searchMoves') ?? 'Search moves...'}
+                        value={moveSearchTeam1}
+                        onChange={(e) => setMoveSearchTeam1(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
-                      {battleState.team1.pokemon[battleState.activeIndex1].moves.map((move, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setSelectedMove1(idx)}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            selectedMove1 === idx
-                              ? 'border-blue-500 bg-blue-100'
-                              : 'border-gray-300 hover:border-blue-300'
-                          }`}
-                        >
-                          <p className="font-semibold text-sm capitalize">{move.name.replace('-', ' ')}</p>
-                          <p className="text-xs text-gray-600">{move.type}</p>
-                          {move.power && <p className="text-xs">Power: {move.power}</p>}
-                        </button>
-                      ))}
+                      {battleState.team1.pokemon[battleState.activeIndex1].moves
+                        .map((move, idx) => ({ move, originalIdx: idx }))
+                        .filter(({ move }) =>
+                          move.name.toLowerCase().replace(/-/g, ' ').includes(moveSearchTeam1.toLowerCase()) ||
+                          move.type.toLowerCase().includes(moveSearchTeam1.toLowerCase())
+                        )
+                        .map(({ move, originalIdx }) => (
+                          <button
+                            key={originalIdx}
+                            type="button"
+                            onClick={() => setSelectedMove1(originalIdx)}
+                            className={`p-3 rounded-lg border-2 transition-all ${
+                              selectedMove1 === originalIdx
+                                ? 'border-blue-500 bg-blue-100'
+                                : 'border-gray-300 hover:border-blue-300'
+                            }`}
+                          >
+                            <p className="font-semibold text-sm capitalize">{move.name.replace(/-/g, ' ')}</p>
+                            <p className="text-xs text-gray-600 capitalize">{move.type}</p>
+                            {move.power && <p className="text-xs">Power: {move.power}</p>}
+                          </button>
+                        ))}
                     </div>
                   </div>
 
                   {/* Team 2 Moves */}
                   <div className="bg-white rounded-lg p-4 border-2 border-red-300">
                     <h4 className="font-semibold mb-3">{t('selectMove') ?? 'Select Move'} - {t('team2')}</h4>
+
+                    {/* Search Input */}
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder={t('searchMoves') ?? 'Search moves...'}
+                        value={moveSearchTeam2}
+                        onChange={(e) => setMoveSearchTeam2(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
-                      {battleState.team2.pokemon[battleState.activeIndex2].moves.map((move, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setSelectedMove2(idx)}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            selectedMove2 === idx
-                              ? 'border-red-500 bg-red-100'
-                              : 'border-gray-300 hover:border-red-300'
-                          }`}
-                        >
-                          <p className="font-semibold text-sm capitalize">{move.name.replace('-', ' ')}</p>
-                          <p className="text-xs text-gray-600">{move.type}</p>
-                          {move.power && <p className="text-xs">Power: {move.power}</p>}
-                        </button>
-                      ))}
+                      {battleState.team2.pokemon[battleState.activeIndex2].moves
+                        .map((move, idx) => ({ move, originalIdx: idx }))
+                        .filter(({ move }) =>
+                          move.name.toLowerCase().replace(/-/g, ' ').includes(moveSearchTeam2.toLowerCase()) ||
+                          move.type.toLowerCase().includes(moveSearchTeam2.toLowerCase())
+                        )
+                        .map(({ move, originalIdx }) => (
+                          <button
+                            key={originalIdx}
+                            type="button"
+                            onClick={() => setSelectedMove2(originalIdx)}
+                            className={`p-3 rounded-lg border-2 transition-all ${
+                              selectedMove2 === originalIdx
+                                ? 'border-red-500 bg-red-100'
+                                : 'border-gray-300 hover:border-red-300'
+                            }`}
+                          >
+                            <p className="font-semibold text-sm capitalize">{move.name.replace(/-/g, ' ')}</p>
+                            <p className="text-xs text-gray-600 capitalize">{move.type}</p>
+                            {move.power && <p className="text-xs">Power: {move.power}</p>}
+                          </button>
+                        ))}
                     </div>
                   </div>
                 </div>

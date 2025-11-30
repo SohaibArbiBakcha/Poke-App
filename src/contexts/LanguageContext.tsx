@@ -48,6 +48,7 @@ const translations = {
     eggMoves: 'Egg Moves',
     tutorMoves: 'Tutor',
     evolutionChain: 'Evolution Chain',
+    searchMoves: 'Search moves...',
 
     // Battle Simulator
     battleSimulator: 'Battle Simulator',
@@ -111,6 +112,7 @@ const translations = {
     eggMoves: 'Œuf',
     tutorMoves: 'Tuteur',
     evolutionChain: 'Chaîne d\'évolution',
+    searchMoves: 'Rechercher des capacités...',
 
     // Battle Simulator
     battleSimulator: 'Simulateur de Combat',
@@ -174,6 +176,7 @@ const translations = {
     eggMoves: 'البيض',
     tutorMoves: 'المعلم',
     evolutionChain: 'سلسلة التطور',
+    searchMoves: 'البحث عن الحركات...',
 
     // Battle Simulator
     battleSimulator: 'محاكي المعركة',
