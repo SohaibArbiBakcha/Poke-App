@@ -33,6 +33,27 @@
   transform-style: preserve-3d;
 }
 
+/* Pixel-art sprite rendering */
+.pixel-art {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+
+/* Retro dialog text */
+.retro-text {
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Blinking cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
 /* Loading progress bar fill */
 .progress-bar-fill {
   background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);

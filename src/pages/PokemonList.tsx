@@ -26,8 +26,11 @@ export const PokemonList: React.FC = () => {
   const filtersRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const pokeballRef = useRef<HTMLImageElement>(null);
+  const starterRef = useRef<HTMLImageElement>(null);
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataReady, setDataReady] = useState(false);
+  const [minTimeDone, setMinTimeDone] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingTotal, setLoadingTotal] = useState(0);
   const [error, setError] = useState(false);
@@ -35,6 +38,17 @@ export const PokemonList: React.FC = () => {
     const stored = localStorage.getItem('pokemonFilters');
     return stored ? (JSON.parse(stored) as PokemonFilters) : defaultFilters;
   });
+
+  // Enforce minimum 4s loading screen so the animation is visible
+  useEffect(() => {
+    const timer = setTimeout(() => setMinTimeDone(true), 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Hide loader only when both data is ready AND minimum time has elapsed
+  useEffect(() => {
+    if (dataReady && minTimeDone) setLoading(false);
+  }, [dataReady, minTimeDone]);
 
   // Page fade-in and logo/filter entrance on mount
   useEffect(() => {
@@ -45,15 +59,22 @@ export const PokemonList: React.FC = () => {
 
   // Spin the pokeball while loading
   useEffect(() => {
-    if (loading && pokeballRef.current) {
-      gsap.to(pokeballRef.current, {
-        rotation: 360,
-        duration: 1,
-        repeat: -1,
-        ease: 'none',
-      });
-    }
-  }, [loading, loadingProgress]); // re-check when progress updates ensure ref is mounted
+    if (!loading || !pokeballRef.current) return;
+    const spin = gsap.to(pokeballRef.current, { rotation: 360, duration: 1, repeat: -1, ease: 'none' });
+    return () => { spin.kill(); };
+  }, [loading]);
+
+  // Starter runs left-to-right across the bottom while loading
+  useEffect(() => {
+    if (!loading || !starterRef.current) return;
+    const el = starterRef.current;
+    const run = gsap.fromTo(el,
+      { x: -80 },
+      { x: window.innerWidth + 80, duration: 5, ease: 'none', repeat: -1 }
+    );
+    const bounce = gsap.to(el, { y: -10, duration: 0.2, ease: 'power1.inOut', yoyo: true, repeat: -1 });
+    return () => { run.kill(); bounce.kill(); };
+  }, [loading]);
 
   // Stagger cards when data finishes loading
   useEffect(() => {
@@ -83,7 +104,7 @@ export const PokemonList: React.FC = () => {
         const cached: Pokemon[] = JSON.parse(cachedStr);
         if (cached.length && cached[0] && (cached[0] as any).paradox !== undefined) {
           setPokemon(cached);
-          setLoading(false);
+          setDataReady(true);
           return;
         }
       } catch {
@@ -203,7 +224,7 @@ export const PokemonList: React.FC = () => {
         pokemonDetails.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
         setPokemon(pokemonDetails);
         localStorage.setItem('pokemonData', JSON.stringify(pokemonDetails));
-        setLoading(false);
+        setDataReady(true);
       } catch (err) {
         console.error('Error fetching Pokemon:', err);
         setError(true);
@@ -240,7 +261,7 @@ export const PokemonList: React.FC = () => {
   if (loading) {
     const progressPercent = loadingTotal > 0 ? Math.round((loadingProgress / loadingTotal) * 100) : 0;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FF1C1C] gap-8">
+      <div className="relative flex flex-col items-center justify-center min-h-screen bg-[#FF1C1C] gap-8 overflow-hidden">
         {/* Pokémon Logo */}
         <img
           src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/1200px-International_Pok%C3%A9mon_logo.svg.png"
@@ -257,14 +278,14 @@ export const PokemonList: React.FC = () => {
         />
 
         {/* Counter */}
-        <p className="text-white font-bold text-lg tracking-wide">
+        <p className="retro-text text-white font-bold text-base tracking-widest uppercase">
           {loadingTotal > 0 ? `${loadingProgress} / ${loadingTotal} Pokémon` : 'Connecting...'}
         </p>
 
         {/* HP-bar style progress */}
         <div className="w-72">
-          <div className="flex justify-between text-white/80 text-sm mb-2">
-            <span>{t('loading')}</span>
+          <div className="flex justify-between text-white/80 text-sm mb-2 retro-text">
+            <span>LOADING</span>
             <span>{progressPercent}%</span>
           </div>
           <div className="h-5 bg-gray-900 rounded-full border-2 border-gray-950 overflow-hidden shadow-inner">
@@ -274,6 +295,27 @@ export const PokemonList: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Retro Game Boy dialog — bottom left */}
+        <div className="absolute bottom-20 left-6 bg-white border-4 border-gray-900 rounded-lg p-3 w-52 shadow-[4px_4px_0px_#111]">
+          <div className="retro-text text-[9px] font-bold text-gray-900 border-b-2 border-gray-900 pb-1 mb-2 uppercase tracking-widest">
+            PROF. OAK
+          </div>
+          <p className="retro-text text-[9px] text-gray-800 leading-relaxed">
+            {loadingTotal > 0
+              ? `Registered ${loadingProgress} of ${loadingTotal} Pokémon in the Pokédex!`
+              : 'Booting Pokédex system...'}
+            <span className="cursor-blink ml-0.5">▌</span>
+          </p>
+        </div>
+
+        {/* Running starter (Charmander) along the bottom */}
+        <img
+          ref={starterRef}
+          src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/4.gif"
+          alt="Charmander"
+          className="pixel-art absolute bottom-6 w-16 h-16 object-contain"
+        />
       </div>
     );
   }
