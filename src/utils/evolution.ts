@@ -13,10 +13,10 @@ function buildRequirement(details: any): EvolutionRequirement {
     req.detailsText = `Lv ${details.min_level}`;
   } else if (details.item) {
     req.item = details.item.name;
-    req.detailsText = `Use ${details.item.name.replace('-', ' ')}`;
+    req.detailsText = `Use ${details.item.name.replace(/-/g, ' ')}`;
   } else if (details.held_item) {
     req.heldItem = details.held_item.name;
-    req.detailsText = `Trade holding ${details.held_item.name.replace('-', ' ')}`;
+    req.detailsText = `Trade holding ${details.held_item.name.replace(/-/g, ' ')}`;
   } else if (details.trigger?.name === 'trade') {
     req.detailsText = 'Trade';
   } else {
@@ -44,24 +44,10 @@ function mapChainNode(apiNode: any): EvolutionNode {
 }
 
 /**
- * Fetch and parse the evolution chain for a given Pokémon species.
- * You can pass either a species API URL or the numeric species ID.
+ * Fetch and parse the evolution chain given the evolution-chain API URL.
+ * Pass `species.evolution_chain.url` from an already-fetched species object.
  */
-export async function fetchEvolutionChain(speciesIdentifier: string | number): Promise<EvolutionNode> {
-  // 1. Get species to obtain evolution_chain url if identifier is id/name
-  let evolutionChainUrl: string;
-
-  if (typeof speciesIdentifier === 'string' && speciesIdentifier.startsWith('http')) {
-    // direct species URL
-    const speciesResp = await axios.get(speciesIdentifier);
-    evolutionChainUrl = speciesResp.data.evolution_chain.url;
-  } else {
-    // identifier is id|name|number
-    const speciesResp = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${speciesIdentifier}/`);
-    evolutionChainUrl = speciesResp.data.evolution_chain.url;
-  }
-
-  // 2. Fetch evolution chain
+export async function fetchEvolutionChain(evolutionChainUrl: string): Promise<EvolutionNode> {
   const chainResp = await axios.get(evolutionChainUrl);
   const rootApiNode = chainResp.data.chain;
   return mapChainNode(rootApiNode);

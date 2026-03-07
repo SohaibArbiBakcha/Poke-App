@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { Link } from 'react-router-dom';
 import { Pokemon, PokemonFilters } from '../types/pokemon';
 import { PokemonCard } from '../components/PokemonCard';
@@ -20,42 +21,59 @@ const defaultFilters: PokemonFilters = {
 
 export const PokemonList: React.FC = () => {
   const { t } = useLanguage();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const pokeballRef = useRef<HTMLImageElement>(null);
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingTotal, setLoadingTotal] = useState(0);
+  const [error, setError] = useState(false);
   const [filters, setFilters] = useState<PokemonFilters>(() => {
     const stored = localStorage.getItem('pokemonFilters');
     return stored ? (JSON.parse(stored) as PokemonFilters) : defaultFilters;
   });
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+
+  // Page fade-in and logo/filter entrance on mount
+  useEffect(() => {
+    gsap.from(pageRef.current, { opacity: 0, duration: 0.4, ease: 'power2.out' });
+    gsap.from(logoRef.current, { scale: 0, opacity: 0, duration: 0.8, ease: 'elastic.out(1, 0.5)', delay: 0.1 });
+    gsap.from(filtersRef.current, { y: -20, opacity: 0, duration: 0.5, delay: 0.3, ease: 'power2.out' });
+  }, []);
+
+  // Spin the pokeball while loading
+  useEffect(() => {
+    if (loading && pokeballRef.current) {
+      gsap.to(pokeballRef.current, {
+        rotation: 360,
+        duration: 1,
+        repeat: -1,
+        ease: 'none',
+      });
+    }
+  }, [loading, loadingProgress]); // re-check when progress updates ensure ref is mounted
+
+  // Stagger cards when data finishes loading
+  useEffect(() => {
+    if (!loading && gridRef.current) {
+      const cards = gridRef.current.querySelectorAll(':scope > a');
+      if (cards.length > 0) {
+        gsap.from(cards, {
+          y: 30, opacity: 0, duration: 0.4,
+          stagger: { amount: 0.5 },
+          ease: 'power2.out',
+          clearProps: 'all',
+        });
+      }
+    }
+  }, [loading]);
 
   // Persist filters to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('pokemonFilters', JSON.stringify(filters));
   }, [filters]);
-
-  const regions = [
-    { id: 'kanto', name: 'Kanto', generations: [1] },
-    { id: 'johto', name: 'Johto', generations: [2] },
-    { id: 'hoenn', name: 'Hoenn', generations: [3] },
-    { id: 'sinnoh', name: 'Sinnoh', generations: [4] },
-    { id: 'unova', name: 'Unova', generations: [5] },
-    { id: 'kalos', name: 'Kalos', generations: [6] },
-    { id: 'alola', name: 'Alola', generations: [7] },
-    { id: 'galar', name: 'Galar', generations: [8] },
-    { id: 'paldea', name: 'Paldea', generations: [9] },
-  ];
-
-  const getGeneration = (id: number): number => {
-    if (id >= 152 && id <= 251) return 2;
-    else if (id >= 252 && id <= 386) return 3;
-    else if (id >= 387 && id <= 493) return 4;
-    else if (id >= 494 && id <= 649) return 5;
-    else if (id >= 650 && id <= 721) return 6;
-    else if (id >= 722 && id <= 809) return 7;
-    else if (id >= 810 && id <= 905) return 8;
-    else if (id >= 906) return 9;
-    return 1;
-  };
 
   useEffect(() => {
     // If data is cached, use it and skip network request
@@ -86,6 +104,7 @@ export const PokemonList: React.FC = () => {
             results.push(res.value);
           }
         });
+        setLoadingProgress(results.length);
       }
       return results;
     };
@@ -95,11 +114,12 @@ export const PokemonList: React.FC = () => {
         // Fetch first 1010 Pokemon to cover all generations
         const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1010');
         const data = await response.json();
-        
+        setLoadingTotal(data.results.length);
+
         const tasks: Array<() => Promise<Pokemon>> = data.results.map((pokemon: { url: string }) => async () => {
           const res = await fetch(pokemon.url);
           const details = await res.json();
-          
+
           // Calculate generation based on Pokemon ID ranges
           let generation = 1;
           if (details.id >= 152 && details.id <= 251) generation = 2;
@@ -110,7 +130,7 @@ export const PokemonList: React.FC = () => {
           else if (details.id >= 722 && details.id <= 809) generation = 7;
           else if (details.id >= 810 && details.id <= 905) generation = 8;
           else if (details.id >= 906) generation = 9;
-          
+
           // Fetch species data to get official names in different languages
           let species;
           try {
@@ -129,10 +149,10 @@ export const PokemonList: React.FC = () => {
             fr: findName('fr'),
             ar: findName('ar')
           };
-          
+
           // Use official artwork if available, otherwise use front default sprite
-          const imageUrl = details.sprites.other['official-artwork']?.front_default || 
-                          details.sprites.front_default || 
+          const imageUrl = details.sprites.other['official-artwork']?.front_default ||
+                          details.sprites.front_default ||
                           `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${details.id}.png`;
 
           // Determine form (Alolan/Galarian/Normal) from name
@@ -141,7 +161,7 @@ export const PokemonList: React.FC = () => {
           if (lowerName.includes('alola')) form = 'alolan';
           else if (lowerName.includes('galar')) form = 'galarian';
           else if (lowerName.includes('mega')) form = 'mega';
-          
+
           // Extract alternate regional forms from species varieties
           const altForms = (species.varieties ?? []).reduce((arr: ('alolan' | 'galarian' | 'mega')[], v: any) => {
             const n = (v.pokemon?.name ?? '').toLowerCase();
@@ -150,7 +170,7 @@ export const PokemonList: React.FC = () => {
             else if (n.includes('mega')) arr.push('mega');
             return arr;
           }, [] as ('alolan' | 'galarian')[]);
-          
+
           return {
             id: details.id,
             name: details.name,
@@ -176,7 +196,7 @@ export const PokemonList: React.FC = () => {
             abilities: details.abilities.map((ability: { ability: { name: string } }) => ability.ability.name),
           };
         });
-      
+
         const pokemonDetails = await runBatches<Pokemon>(tasks, 30);
 
         // Sort by ID to maintain proper order
@@ -184,8 +204,9 @@ export const PokemonList: React.FC = () => {
         setPokemon(pokemonDetails);
         localStorage.setItem('pokemonData', JSON.stringify(pokemonDetails));
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching Pokemon:', error);
+      } catch (err) {
+        console.error('Error fetching Pokemon:', err);
+        setError(true);
         setLoading(false);
       }
     };
@@ -194,18 +215,17 @@ export const PokemonList: React.FC = () => {
   }, []);
 
   const filteredPokemon = pokemon.filter((p) => {
-    const nameMatch = filters.name === '' || 
+    const nameMatch = filters.name === '' ||
                      p.name.toLowerCase().includes(filters.name.toLowerCase()) ||
                      p.translatedNames.en.toLowerCase().includes(filters.name.toLowerCase()) ||
                      p.translatedNames.fr.toLowerCase().includes(filters.name.toLowerCase()) ||
                      p.translatedNames.ar.includes(filters.name);
-    
+
     const typeMatch = filters.types.length === 0 ||
                      filters.types.every((type) => p.types.includes(type));
-      
-    // Match generation (single selection)
+
     const generationMatch = filters.generation === null || p.generation === filters.generation;
-    
+
     const legendaryMatch = filters.legendary === null || p.legendary === filters.legendary;
     const mythicalMatch = filters.mythical === null || p.mythical === filters.mythical;
     const paradoxMatch = filters.paradox === null || p.paradox === filters.paradox;
@@ -214,34 +234,80 @@ export const PokemonList: React.FC = () => {
       (p.form !== 'normal' && filters.forms.includes(p.form as any)) ||
       (p.altForms && filters.forms.filter((f) => f !== 'normal').some((f) => p.altForms!.includes(f)));
 
-    if (!selectedRegion) return nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
-    const region = regions.find(r => r.id === selectedRegion);
-    if (!region) return nameMatch && typeMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
-    const generation = getGeneration(p.id);
-    return region.generations.includes(generation) && nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
+    return nameMatch && typeMatch && generationMatch && legendaryMatch && mythicalMatch && paradoxMatch && formMatch;
   });
 
   if (loading) {
+    const progressPercent = loadingTotal > 0 ? Math.round((loadingProgress / loadingTotal) * 100) : 0;
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <img src="https://i.gifer.com/2iiJ.gif" alt="Loading" className="w-16 h-16 object-contain" />
-        <span className="ml-2">{t('loading')}</span>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FF1C1C] gap-8">
+        {/* Pokémon Logo */}
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/1200px-International_Pok%C3%A9mon_logo.svg.png"
+          alt="Pokémon"
+          className="h-20 object-contain drop-shadow-lg"
+        />
+
+        {/* Spinning Pokéball */}
+        <img
+          ref={pokeballRef}
+          src="/pokeball.svg"
+          alt="Loading"
+          className="w-24 h-24 drop-shadow-xl"
+        />
+
+        {/* Counter */}
+        <p className="text-white font-bold text-lg tracking-wide">
+          {loadingTotal > 0 ? `${loadingProgress} / ${loadingTotal} Pokémon` : 'Connecting...'}
+        </p>
+
+        {/* HP-bar style progress */}
+        <div className="w-72">
+          <div className="flex justify-between text-white/80 text-sm mb-2">
+            <span>{t('loading')}</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div className="h-5 bg-gray-900 rounded-full border-2 border-gray-950 overflow-hidden shadow-inner">
+            <div
+              className="progress-bar-fill h-full rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#FF1C1C] flex flex-col items-center justify-center gap-4">
+        <p className="text-white text-2xl font-bold">Failed to load Pokémon data.</p>
+        <p className="text-white/80">Check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-2 px-6 py-3 bg-white text-red-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FF1C1C]">
+    <div ref={pageRef} className="min-h-screen bg-[#FF1C1C]">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex justify-center flex-1">
+        <div className="grid grid-cols-3 items-center mb-8">
+          <div />
+          <div className="flex justify-center">
             <img
+              ref={logoRef}
               src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/1200px-International_Pok%C3%A9mon_logo.svg.png"
               alt={t('pokemonLogo')}
               className="h-24 object-contain"
             />
           </div>
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-3 items-center justify-end">
             <Link
               to="/battle"
               className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg"
@@ -252,15 +318,23 @@ export const PokemonList: React.FC = () => {
             <LanguageSelector />
           </div>
         </div>
-        <div className="mb-8">
-          <Filters filters={filters} onFilterChange={setFilters} />
 
+        <div ref={filtersRef} className="mb-4">
+          <Filters filters={filters} onFilterChange={setFilters} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredPokemon.map((pokemon) => (
-            <PokemonCard key={pokemon.id} pokemon={pokemon} />
+
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-white/80 text-sm font-medium">
+            Showing {filteredPokemon.length} of {pokemon.length} Pokémon
+          </p>
+        </div>
+
+        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {filteredPokemon.map((p) => (
+            <PokemonCard key={p.id} pokemon={p} />
           ))}
         </div>
+
         {filteredPokemon.length === 0 && (
           <div className="text-center text-white text-xl mt-8">
             No Pokémon found matching your filters.

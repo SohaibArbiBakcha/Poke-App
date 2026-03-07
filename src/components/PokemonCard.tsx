@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import gsap from 'gsap';
 import { Pokemon } from '../types/pokemon';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -59,6 +60,29 @@ const getRegion = (generation: number): string => {
 export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon }) => {
   const { language } = useLanguage();
   const [isShiny, setIsShiny] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    gsap.to(cardRef.current, {
+      rotateX: (-y / rect.height) * 15,
+      rotateY: (x / rect.width) * 15,
+      transformPerspective: 800,
+      duration: 0.3,
+      ease: 'power1.out',
+    });
+  };
+
+  const handleMouseLeave = () => {
+    gsap.to(cardRef.current, {
+      rotateX: 0,
+      rotateY: 0,
+      duration: 0.5,
+      ease: 'elastic.out(1, 0.5)',
+    });
+  };
   const imageUrl = isShiny
     ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${pokemon.id}.png`
     : pokemon.imageUrl;
@@ -67,7 +91,12 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon }) => {
 
   return (
     <Link to={`/pokemon/${pokemon.id}`}>
-      <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
+      <div
+        ref={cardRef}
+        className="card-3d bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="relative aspect-square p-4 bg-gradient-to-br from-gray-50 to-gray-100">
           <button
             onClick={(e) => { e.preventDefault(); setIsShiny(prev => !prev); }}
@@ -102,7 +131,6 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon }) => {
         <div className="p-4">
           <div className="flex flex-col items-center">
             <div className="text-lg font-bold capitalize">{displayName}</div>
-            <div className="text-xs text-gray-500">#{pokemon.id.toString().padStart(3, '0')}</div>
             <div className="text-xs text-gray-500 mt-1">
               {getRegion(getGeneration(pokemon.id))}
             </div>

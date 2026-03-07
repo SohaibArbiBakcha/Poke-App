@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Zap, Shield, Heart, Search } from 'lucide-react';
 import { Pokemon, Move, MovesByMethod } from '../types/pokemon';
@@ -56,6 +57,10 @@ const typeIcons: Record<string, string> = {
 export const PokemonDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t, language } = useLanguage();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const artworkRef = useRef<HTMLImageElement>(null);
+  const typesRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
   const [pokemon, setPokemon] = useState<Pokemon | null>(null);
   const [loading, setLoading] = useState(true);
   const [isShiny, setIsShiny] = useState(false);
@@ -69,6 +74,34 @@ export const PokemonDetail: React.FC = () => {
   const [selectedMoveTab, setSelectedMoveTab] = useState<'levelUp' | 'machine' | 'egg' | 'tutor'>('levelUp');
   const [loadingMoves, setLoadingMoves] = useState(false);
   const [moveSearchQuery, setMoveSearchQuery] = useState('');
+
+  // Page fade-in on mount
+  useEffect(() => {
+    gsap.from(pageRef.current, { opacity: 0, duration: 0.4, ease: 'power2.out' });
+  }, []);
+
+  // Animate artwork, types, and stat bars when pokemon data loads
+  useEffect(() => {
+    if (!pokemon) return;
+    const ctx = gsap.context(() => {
+      gsap.from(artworkRef.current, {
+        y: -60, opacity: 0, scale: 0.7,
+        duration: 0.8, ease: 'elastic.out(1, 0.5)',
+      });
+      if (typesRef.current) {
+        gsap.from(typesRef.current.querySelectorAll('img'), {
+          scale: 0, opacity: 0, duration: 0.4,
+          stagger: 0.1, ease: 'back.out(2)',
+        });
+      }
+      if (statsRef.current) {
+        gsap.from(statsRef.current.querySelectorAll('.stat-bar-fill'), {
+          width: 0, duration: 1, ease: 'power2.out', stagger: 0.08,
+        });
+      }
+    });
+    return () => ctx.revert();
+  }, [pokemon?.id]);
 
   useEffect(() => {
     const fetchPokemonDetail = async () => {
@@ -188,9 +221,9 @@ export const PokemonDetail: React.FC = () => {
           }
         }
 
-        // Fetch evolution chain
+        // Fetch evolution chain — pass the already-known chain URL directly
         try {
-          const chainTyped = await fetchEvolutionChain(details.species.url);
+          const chainTyped = await fetchEvolutionChain(species.evolution_chain.url);
           setEvoChain(chainTyped);
         } catch (err) {
           console.error('typed evo fetch error', err);
@@ -199,20 +232,17 @@ export const PokemonDetail: React.FC = () => {
         setLoading(false);
 
         // Fetch moves (after setting loading to false so page renders faster)
-        fetchMoves(details.id);
+        fetchMoves(details.moves);
       } catch (error) {
         console.error('Error fetching Pokemon details:', error);
         setLoading(false);
       }
     };
 
-    const fetchMoves = async (pokemonId: number) => {
+    const fetchMoves = async (movesData: any[]) => {
       setLoadingMoves(true);
       try {
-        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
-        const data = await response.json();
-
-        const movePromises = data.moves.slice(0, 100).map(async (moveEntry: any) => {
+        const movePromises = movesData.map(async (moveEntry: any) => {
           try {
             const moveRes = await fetch(moveEntry.move.url);
             const moveData = await moveRes.json();
@@ -308,7 +338,7 @@ export const PokemonDetail: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#FF1C1C] py-8">
+    <div ref={pageRef} className="min-h-screen bg-[#FF1C1C] py-8">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-6">
           <Link to="/" className="inline-flex items-center text-white hover:text-gray-200">
@@ -392,6 +422,7 @@ export const PokemonDetail: React.FC = () => {
 
                 {/* Pokémon artwork */}
                 <img
+                  ref={artworkRef}
                   src={displayImage}
                   alt={displayName}
                   className="w-4/5 max-w-md h-auto object-contain"
@@ -404,7 +435,7 @@ export const PokemonDetail: React.FC = () => {
               </div>
               <div className="md:col-span-1">
                 <h1 className="text-4xl font-bold capitalize mb-4">{displayName}</h1>
-                <div className="flex gap-3 flex-wrap">
+                <div ref={typesRef} className="flex gap-3 flex-wrap">
                   {pokemon.types.map((type) => (
                     <img
                       key={type}
@@ -441,7 +472,7 @@ export const PokemonDetail: React.FC = () => {
                         onClick={() => setSelectedAbility(selectedAbility === ab.name ? null : ab.name)}
                         className={`px-3 py-1 rounded-full text-sm capitalize shadow ${selectedAbility === ab.name ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
                       >
-                        {ab.name.replace('-', ' ')}
+                        {ab.name.replace(/-/g, ' ')}
                       </button>
                     ))}
                   </div>
@@ -454,7 +485,7 @@ export const PokemonDetail: React.FC = () => {
 
                 <div>
                   <h2 className="text-xl font-semibold mb-4">{t('baseStats')}</h2>
-                  <div className="space-y-3">
+                  <div ref={statsRef} className="space-y-3">
                     {Object.entries(pokemon.stats).map(([stat, value]) => {
                       const statTranslations: Record<string, string> = {
                         hp: t('hp'),
@@ -473,7 +504,7 @@ export const PokemonDetail: React.FC = () => {
                           </div>
                           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-1000"
+                              className="stat-bar-fill h-full bg-gradient-to-r from-blue-500 to-blue-400"
                               style={{ width: `${Math.min((value / 255) * 100, 100)}%` }}
                             />
                         </div>

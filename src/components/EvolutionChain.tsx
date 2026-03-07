@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import gsap from 'gsap';
 import { EvolutionNode } from '../types/pokemon';
 
 interface EvolutionChainProps {
@@ -12,6 +13,18 @@ interface EvolutionChainProps {
  * Each path is rendered left-to-right with arrows and requirement captions.
  */
 export const EvolutionChain: React.FC<EvolutionChainProps> = ({ chain, megaForms = [] }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const nodes = containerRef.current.querySelectorAll('a');
+    gsap.from(nodes, {
+      opacity: 0, y: 20, duration: 0.4,
+      stagger: 0.1, ease: 'power2.out',
+      clearProps: 'all',
+    });
+  }, [chain]);
+
   if (!chain) return null;
 
   // Collect every possible path from root to leaves
@@ -27,7 +40,7 @@ export const EvolutionChain: React.FC<EvolutionChainProps> = ({ chain, megaForms
   dfs(chain, []);
 
   return (
-    <div className="flex flex-col gap-4 items-start">
+    <div ref={containerRef} className="flex flex-col gap-4 items-start">
       {paths.map((path, rowIdx) => (
         <div key={rowIdx} className="flex items-center gap-2 flex-wrap">
           {path.map((node, idx) => (

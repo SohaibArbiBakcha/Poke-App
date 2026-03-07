@@ -13,12 +13,13 @@ const translations = {
     // Header
     pokemonLogo: 'Pokémon',
     backToPokedex: 'Back to Pokédex',
-    
+
     // Search and Filters
     searchPlaceholder: 'Search Pokémon...',
     generation: 'Generation',
     types: 'Types',
-    
+    special: 'Special',
+
     // Pokemon Details
     height: 'Height',
     weight: 'Weight',
@@ -30,7 +31,8 @@ const translations = {
     specialAttack: 'Special Attack',
     specialDefense: 'Special Defense',
     speed: 'Speed',
-    
+    originPokemon: 'Origin Pokémon',
+
     // Loading and Errors
     loading: 'Loading...',
     pokemonNotFound: 'Pokémon not found',
@@ -77,12 +79,13 @@ const translations = {
     // Header
     pokemonLogo: 'Pokémon',
     backToPokedex: 'Retour au Pokédex',
-    
+
     // Search and Filters
     searchPlaceholder: 'Rechercher un Pokémon...',
     generation: 'Génération',
     types: 'Types',
-    
+    special: 'Spécial',
+
     // Pokemon Details
     height: 'Taille',
     weight: 'Poids',
@@ -94,7 +97,8 @@ const translations = {
     specialAttack: 'Attaque Spéciale',
     specialDefense: 'Défense Spéciale',
     speed: 'Vitesse',
-    
+    originPokemon: 'Pokémon d\'origine',
+
     // Loading and Errors
     loading: 'Chargement...',
     pokemonNotFound: 'Pokémon introuvable',
@@ -141,12 +145,13 @@ const translations = {
     // Header
     pokemonLogo: 'بوكيمون',
     backToPokedex: 'العودة إلى البوكيديكس',
-    
+
     // Search and Filters
     searchPlaceholder: 'البحث عن بوكيمون...',
     generation: 'الجيل',
     types: 'الأنواع',
-    
+    special: 'خاص',
+
     // Pokemon Details
     height: 'الطول',
     weight: 'الوزن',
@@ -158,7 +163,8 @@ const translations = {
     specialAttack: 'الهجوم الخاص',
     specialDefense: 'الدفاع الخاص',
     speed: 'السرعة',
-    
+    originPokemon: 'بوكيمون الأصل',
+
     // Loading and Errors
     loading: 'جاري التحميل...',
     pokemonNotFound: 'لم يتم العثور على البوكيمون',
@@ -205,8 +211,18 @@ const translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const LANG_KEY = 'pokeAppLanguage';
+
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>(() => {
+    const stored = localStorage.getItem(LANG_KEY) as Language | null;
+    return stored && ['en', 'fr', 'ar'].includes(stored) ? stored : 'en';
+  });
+
+  const setLanguage = (lang: Language) => {
+    localStorage.setItem(LANG_KEY, lang);
+    setLanguageState(lang);
+  };
 
   const t = (key: string): string => {
     return translations[language][key as keyof typeof translations['en']] || key;

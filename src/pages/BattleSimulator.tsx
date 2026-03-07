@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Swords, Heart, Zap, Search } from 'lucide-react';
+import { ArrowLeft, Swords, Heart, Zap, Search, X } from 'lucide-react';
 import { Pokemon } from '../types/pokemon';
 import { BattlePokemon, BattleState } from '../types/battle';
 import { PokemonBattleSelector } from '../components/PokemonBattleSelector';
@@ -21,6 +22,8 @@ import { getMegaEvolutionByStone, applyMegaEvolution } from '../utils/megaEvolut
 
 export const BattleSimulator: React.FC = () => {
   const { t, language } = useLanguage();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
   const [allPokemon, setAllPokemon] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
   const [battleMode, setBattleMode] = useState<'1v1' | '2v2'>('1v1');
@@ -32,6 +35,22 @@ export const BattleSimulator: React.FC = () => {
   const [selectedMove2, setSelectedMove2] = useState<number | null>(null);
   const [moveSearchTeam1, setMoveSearchTeam1] = useState('');
   const [moveSearchTeam2, setMoveSearchTeam2] = useState('');
+  const [megaError, setMegaError] = useState<string | null>(null);
+
+  // Page fade-in on mount
+  useEffect(() => {
+    gsap.from(pageRef.current, { opacity: 0, duration: 0.4, ease: 'power2.out' });
+  }, []);
+
+  // Animate newest battle log entries sliding in from the left
+  useEffect(() => {
+    if (!logRef.current || battleLog.length === 0) return;
+    const entries = logRef.current.querySelectorAll(':scope > div');
+    const last = entries[entries.length - 1];
+    if (last) {
+      gsap.from(last, { x: -20, opacity: 0, duration: 0.3, ease: 'power2.out' });
+    }
+  }, [battleLog]);
 
   // Load Pokemon data
   useEffect(() => {
@@ -52,13 +71,11 @@ export const BattleSimulator: React.FC = () => {
   const maxPokemon = battleMode === '1v1' ? 1 : 2;
 
   const handleAddPokemonTeam1 = (pokemon: BattlePokemon) => {
-    // Pokemon already has moves selected from the selector
     const initialized = initializePokemonStats(pokemon);
     setTeam1Pokemon([...team1Pokemon, initialized]);
   };
 
   const handleAddPokemonTeam2 = (pokemon: BattlePokemon) => {
-    // Pokemon already has moves selected from the selector
     const initialized = initializePokemonStats(pokemon);
     setTeam2Pokemon([...team2Pokemon, initialized]);
   };
@@ -89,6 +106,7 @@ export const BattleSimulator: React.FC = () => {
 
     setBattleState(initialState);
     setBattleLog(['Battle started!']);
+    setMegaError(null);
   };
 
   const executeTurn = () => {
@@ -117,7 +135,7 @@ export const BattleSimulator: React.FC = () => {
       if (move) {
         const { damage, effectiveness, critical } = calculateDamage(firstAttacker, secondAttacker, move);
 
-        newLog.push(`${firstAttacker.translatedNames[language]} used ${move.name.replace('-', ' ')}!`);
+        newLog.push(`${firstAttacker.translatedNames[language]} used ${move.name.replace(/-/g, ' ')}!`);
 
         if (damage > 0) {
           secondAttacker.currentHp = Math.max(0, secondAttacker.currentHp - damage);
@@ -144,7 +162,7 @@ export const BattleSimulator: React.FC = () => {
         if (move) {
           const { damage, effectiveness, critical } = calculateDamage(secondAttacker, firstAttacker, move);
 
-          newLog.push(`${secondAttacker.translatedNames[language]} used ${move.name.replace('-', ' ')}!`);
+          newLog.push(`${secondAttacker.translatedNames[language]} used ${move.name.replace(/-/g, ' ')}!`);
 
           if (damage > 0) {
             firstAttacker.currentHp = Math.max(0, firstAttacker.currentHp - damage);
@@ -197,6 +215,7 @@ export const BattleSimulator: React.FC = () => {
     setMoveSearchTeam2('');
     setTeam1Pokemon([]);
     setTeam2Pokemon([]);
+    setMegaError(null);
   };
 
   const handleMegaEvolution = (team: 1 | 2, pokemonIndex: number) => {
@@ -207,29 +226,24 @@ export const BattleSimulator: React.FC = () => {
       ? newState.team1.pokemon[pokemonIndex]
       : newState.team2.pokemon[pokemonIndex];
 
-    // Check if already mega evolved
     if (pokemon.isMegaEvolved) {
-      alert('This Pokémon is already Mega Evolved!');
+      setMegaError('This Pokémon is already Mega Evolved!');
       return;
     }
 
-    // Check if has mega stone
     if (!pokemon.heldItem) {
-      alert('This Pokémon is not holding a Mega Stone!');
+      setMegaError('This Pokémon is not holding a Mega Stone!');
       return;
     }
 
-    // Get mega evolution data
     const megaData = getMegaEvolutionByStone(pokemon.id, pokemon.heldItem);
     if (!megaData) {
-      alert('This item cannot trigger Mega Evolution!');
+      setMegaError('This item cannot trigger Mega Evolution!');
       return;
     }
 
-    // Apply mega evolution
     const megaEvolvedPokemon = applyMegaEvolution(pokemon, megaData);
 
-    // Update the pokemon in the team
     if (team === 1) {
       newState.team1.pokemon[pokemonIndex] = megaEvolvedPokemon;
     } else {
@@ -241,6 +255,7 @@ export const BattleSimulator: React.FC = () => {
 
     setBattleState(newState);
     setBattleLog(newLog);
+    setMegaError(null);
   };
 
   if (loading) {
@@ -252,7 +267,7 @@ export const BattleSimulator: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FF1C1C]">
+    <div ref={pageRef} className="min-h-screen bg-[#FF1C1C]">
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <Link to="/" className="inline-flex items-center text-white hover:text-gray-200">
@@ -267,6 +282,16 @@ export const BattleSimulator: React.FC = () => {
             <Swords size={32} />
             {t('battleSimulator') ?? 'Battle Simulator'}
           </h1>
+
+          {/* Inline Mega Evolution error banner */}
+          {megaError && (
+            <div className="flex items-center justify-between mb-4 px-4 py-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+              <span className="text-sm font-medium">{megaError}</span>
+              <button type="button" aria-label="Dismiss" onClick={() => setMegaError(null)} className="ml-3 text-red-500 hover:text-red-700">
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           {!battleState ? (
             <>
@@ -361,7 +386,6 @@ export const BattleSimulator: React.FC = () => {
                           {pokemon.status && (
                             <span className="text-xs bg-red-500 text-white px-2 py-1 rounded capitalize">{pokemon.status}</span>
                           )}
-                          {/* Mega Evolution Button */}
                           {pokemon.heldItem && !pokemon.isMegaEvolved && getMegaEvolutionByStone(pokemon.id, pokemon.heldItem) && idx === battleState.activeIndex1 && (
                             <button
                               type="button"
@@ -391,18 +415,12 @@ export const BattleSimulator: React.FC = () => {
                           />
                         </div>
                       </div>
-
-                      {/* Battle Stats */}
                       <div className="mb-3">
                         <BattleStatsDisplay stats={pokemon.baseStats} compact={true} />
                       </div>
-
-                      {/* Type Defenses */}
                       {idx === battleState.activeIndex1 && (
                         <TypeDefenses types={pokemon.types} />
                       )}
-
-                      {/* Stat Changes Display (if Mega Evolved) */}
                       {pokemon.isMegaEvolved && pokemon.originalBaseStats && (
                         <StatChangesDisplay
                           originalStats={pokemon.originalBaseStats}
@@ -434,7 +452,6 @@ export const BattleSimulator: React.FC = () => {
                           {pokemon.status && (
                             <span className="text-xs bg-red-500 text-white px-2 py-1 rounded capitalize">{pokemon.status}</span>
                           )}
-                          {/* Mega Evolution Button */}
                           {pokemon.heldItem && !pokemon.isMegaEvolved && getMegaEvolutionByStone(pokemon.id, pokemon.heldItem) && idx === battleState.activeIndex2 && (
                             <button
                               type="button"
@@ -464,18 +481,12 @@ export const BattleSimulator: React.FC = () => {
                           />
                         </div>
                       </div>
-
-                      {/* Battle Stats */}
                       <div className="mb-3">
                         <BattleStatsDisplay stats={pokemon.baseStats} compact={true} />
                       </div>
-
-                      {/* Type Defenses */}
                       {idx === battleState.activeIndex2 && (
                         <TypeDefenses types={pokemon.types} />
                       )}
-
-                      {/* Stat Changes Display (if Mega Evolved) */}
                       {pokemon.isMegaEvolved && pokemon.originalBaseStats && (
                         <StatChangesDisplay
                           originalStats={pokemon.originalBaseStats}
@@ -495,8 +506,6 @@ export const BattleSimulator: React.FC = () => {
                   {/* Team 1 Moves */}
                   <div className="bg-white rounded-lg p-4 border-2 border-blue-300">
                     <h4 className="font-semibold mb-3">{t('selectMove') ?? 'Select Move'} - {t('team1')}</h4>
-
-                    {/* Search Input */}
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                       <input
@@ -507,7 +516,6 @@ export const BattleSimulator: React.FC = () => {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-
                     <div className="grid grid-cols-2 gap-2">
                       {battleState.team1.pokemon[battleState.activeIndex1].moves
                         .map((move, idx) => ({ move, originalIdx: idx }))
@@ -537,8 +545,6 @@ export const BattleSimulator: React.FC = () => {
                   {/* Team 2 Moves */}
                   <div className="bg-white rounded-lg p-4 border-2 border-red-300">
                     <h4 className="font-semibold mb-3">{t('selectMove') ?? 'Select Move'} - {t('team2')}</h4>
-
-                    {/* Search Input */}
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                       <input
@@ -549,7 +555,6 @@ export const BattleSimulator: React.FC = () => {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                       />
                     </div>
-
                     <div className="grid grid-cols-2 gap-2">
                       {battleState.team2.pokemon[battleState.activeIndex2].moves
                         .map((move, idx) => ({ move, originalIdx: idx }))
@@ -609,11 +614,13 @@ export const BattleSimulator: React.FC = () => {
               {/* Battle Log */}
               <div className="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-sm max-h-64 overflow-y-auto">
                 <h4 className="font-bold text-white mb-2">{t('battleLog') ?? 'Battle Log'}:</h4>
+                <div ref={logRef}>
                 {battleLog.map((log, idx) => (
                   <div key={idx} className="mb-1">
                     &gt; {log}
                   </div>
                 ))}
+                </div>
               </div>
             </div>
           )}

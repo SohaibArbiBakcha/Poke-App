@@ -28,6 +28,17 @@
   text-align: left;
 }
 
+/* 3D card tilt support for GSAP */
+.card-3d {
+  transform-style: preserve-3d;
+}
+
+/* Loading progress bar fill */
+.progress-bar-fill {
+  background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+
 /* Arabic font support */
 .rtl * {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
